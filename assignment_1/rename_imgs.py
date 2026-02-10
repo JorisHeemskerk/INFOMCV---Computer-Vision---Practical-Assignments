@@ -11,16 +11,22 @@ def rename_data_sequentially(folder: str, prefix: str)-> None:
     """
     Rename all data in provided folder to the format:
     `{prefix}{incremental iterator}.{original extension}`.
+    Ignores hidden files.
     
     :param folder: Path to folder where the data is found
     :type folder: str
     :param prefix: prefix to put in front of incremental iterator.
     :type prefix: str
     """
-    for i, filename in enumerate(os.listdir(folder)):
+    filenames = [
+        filename for filename in os.listdir(folder) if filename[0] != "."
+    ]
+    for i, filename in enumerate(filenames):
+        if filename[0] == ".":
+            continue
         os.rename(
             folder + filename, 
-            folder + prefix + str(i) + filename.split(".")[-1]
+            folder + prefix + str(i) + "." + filename.split(".")[-1]
         )
     
 def main():
