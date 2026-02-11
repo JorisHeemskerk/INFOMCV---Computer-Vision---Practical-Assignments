@@ -5,6 +5,7 @@ a shorter and more usable format.
 """
 
 import os
+import re
 
 
 def rename_data_sequentially(folder: str, prefix: str)-> None:
@@ -18,9 +19,10 @@ def rename_data_sequentially(folder: str, prefix: str)-> None:
     :param prefix: prefix to put in front of incremental iterator.
     :type prefix: str
     """
-    filenames = [
+    # read and sort the filenames, exclude hidden files
+    filenames = sorted([
         filename for filename in os.listdir(folder) if filename[0] != "."
-    ]
+    ], key=lambda s: int(re.search(r'\d+', s).group()))
     for i, filename in enumerate(filenames):
         if filename[0] == ".":
             continue

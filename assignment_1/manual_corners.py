@@ -26,5 +26,6 @@ if __name__=="__main__":
     img = cv2.imread('assignment_1/data/img_0.jpg', 1)
     cv2.imshow('image', img)
     cv2.setMouseCallback('image', click_event)
+    # namedWindow()
     cv2.waitKey(0)
     cv2.destroyAllWindows()
