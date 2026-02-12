@@ -4,6 +4,7 @@ import re
 import datetime
 
 from autmatic_corners import automatic_corner_detector
+from manual_corners import manual_corner_selector
 
 
 def detect_corners(folder: str, output_folder: str)-> None:
@@ -14,7 +15,8 @@ def detect_corners(folder: str, output_folder: str)-> None:
     for filename in filenames:
         success, corners, img = automatic_corner_detector(folder + filename)
         if success == 0:
-            print(f"corners were not detected in image {filename}.")
+            print(f"corners were not auto detected in image {filename}.")
+            success, corners, img = manual_corner_selector(folder + filename)
         cv2.imwrite(output_folder + filename, img)
     
 
