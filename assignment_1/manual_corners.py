@@ -46,15 +46,15 @@ def manual_corner_selector(
         added to the image_corners list. Right clicking gives a zoomed
         in version of the window that's zoomed in on.
 
-        :param event: The path to the input image.
+        :param event: One of the cv::MouseEventTypes constants
         :type event: int
-        :param x: 
+        :param x: The x-coordinate of the mouse event.
         :type x: int
-        :param y: 
+        :param y: The y-coordinate of the mouse event.
         :type y: int
-        :param flags: 
+        :param flags: One of the cv::MouseEventFlags constants.
         :type flags: int
-        :param params: 
+        :param params: Optional parameters.
         :type params: any | None
         """
         if event == cv2.EVENT_LBUTTONDOWN and len(image_corners) < 4:
@@ -122,7 +122,6 @@ def find_corners(
     bottom = sorted(corners_sorted[2:], key=lambda x: x[0], reverse=True)
     
     image_corners = top + bottom
-    print(image_corners)
 
     upper_corners = np.linspace(image_corners[0], image_corners[1], pattern_size[0])
     lower_corners = np.linspace(image_corners[2], image_corners[3], pattern_size[0])
