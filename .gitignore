@@ -213,3 +213,4 @@ output/*
 *.jpg
 *.jpeg
 *.png
+*.npy
