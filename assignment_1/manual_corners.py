@@ -19,7 +19,7 @@ def manual_corner_selector(
     to left-click on the four corners (1 in from the outermost). For
     more accuracy the user can right-click on the image to open a
     separate window with a zoomed in area. These corners are used to
-    calculate all the corners of the chess board.
+    calculate all the corners of the chess board, using `find_corners`.
     Returns if succeeded, along with the image containing the rendered
     corners (if not successful, returns the raw image).
     
@@ -51,7 +51,8 @@ def manual_corner_selector(
         :type x: int
         :param y: The y-coordinate of the mouse event.
         :type y: int
-        :param flags: One of the cv::MouseEventFlags constants.
+        :param flags: One of the cv::MouseEventFlags constants. This
+            parameter is not used in this function.
         :type flags: int
         """
         if event == cv2.EVENT_LBUTTONDOWN and len(image_corners) < 4:
@@ -78,9 +79,7 @@ def manual_corner_selector(
 
     if len(image_corners)==4:
         corners = find_corners(image_corners, pattern_size)
-
-        res_img = cv2.drawChessboardCorners(img, pattern_size, corners, True)
-
+        res_img = cv2.drawChessboardCorners(zoom, pattern_size, corners, True)
         return True, corners, res_img
     else:
         print("The correct amount of corners `4` was not provided")
@@ -120,29 +119,42 @@ def find_corners(
     
     image_corners = top + bottom
 
-    upper_corners = np.linspace(image_corners[0], image_corners[1], pattern_size[0])
-    lower_corners = np.linspace(image_corners[2], image_corners[3], pattern_size[0])
-    left_corners = np.linspace(image_corners[0], image_corners[2], pattern_size[1])
-    right_corners = np.linspace(image_corners[1], image_corners[3], pattern_size[1])
+    upper_corners = np.linspace(
+        image_corners[0],
+        image_corners[1],
+        pattern_size[0]
+    )
+    lower_corners = np.linspace(
+        image_corners[2],
+        image_corners[3],
+        pattern_size[0]
+    )
+    left_corners = np.linspace(
+        image_corners[0],
+        image_corners[2],
+        pattern_size[1]
+    )
+    right_corners = np.linspace(
+        image_corners[1],
+        image_corners[3],
+        pattern_size[1]
+    )
 
     corners = []
     for left, right in zip(left_corners, right_corners):
         for upper, lower in zip(lower_corners, upper_corners):
-                  
-            corners.append(
-                [
-                    line_intersect(
-                        upper[0],
-                        upper[1],
-                        lower[0],
-                        lower[1],
-                        left[0],
-                        left[1],
-                        right[0],
-                        right[1]
-                    )
-                ]
-            )
+            corners.append([
+                line_intersect(
+                    upper[0],
+                    upper[1],
+                    lower[0],
+                    lower[1],
+                    left[0],
+                    left[1],
+                    right[0],
+                    right[1]
+                )
+            ])
     return np.asarray(corners, dtype=np.float32)
 
 
@@ -187,7 +199,7 @@ def line_intersect(
     if d:
         uA = ((Bx2 - Bx1) * (Ay1 - By1) - (By2 - By1) * (Ax1 - Bx1)) / d
     else:
-        return
+        raise ArithmeticError("Lines are parallel and do not intersect")
     x = Ax1 + uA * (Ax2 - Ax1)
     y = Ay1 + uA * (Ay2 - Ay1)
     
