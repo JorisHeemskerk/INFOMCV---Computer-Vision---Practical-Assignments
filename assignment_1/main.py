@@ -33,11 +33,11 @@ def detect_corners(folder: str, output_folder: str)-> None:
     corners_all_images = []
     for filename in filenames:
         success, corners, img = automatic_corner_detector(folder + filename)
-        if success == 0:
+        while success == 0:
             print(
-                f"Corners were not automatically detected in image {filename}."
-                "\nPlease manually click on the four corners and then close "
-                "the image."
+                f"Corners were not automatically or fully manually detected in"
+                f" image {filename}.\nPlease manually click on the four "
+                "corners and then close the image."
             )
             success, corners, img = manual_corner_selector(folder + filename)
         corners_all_images.append(corners)
