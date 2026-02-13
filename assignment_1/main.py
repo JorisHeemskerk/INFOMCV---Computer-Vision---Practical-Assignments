@@ -30,6 +30,8 @@ def detect_corners(folder: str, output_folder: str)-> None:
     filenames = sorted([
         filename for filename in os.listdir(folder) if filename[0] != "."
     ], key=lambda s: int(re.search(r'\d+', s).group()))
+    os.mkdir(output_folder + "corners/")
+
     corners_all_images = []
     for filename in filenames:
         success, corners, img = automatic_corner_detector(folder + filename)
@@ -43,6 +45,7 @@ def detect_corners(folder: str, output_folder: str)-> None:
         corners_all_images.append(corners)
         cv2.imwrite(output_folder + "corners/" + filename, img)
 
+    os.mkdir(output_folder + "data/")
     np.save(
         output_folder + "data/corners_all_images.npy", 
         np.array(corners_all_images)
