@@ -1,5 +1,4 @@
 import cv2
-import numpy as np
 
 
 def automatic_corner_detector(
@@ -22,7 +21,8 @@ def automatic_corner_detector(
     :rtype: tuple[bool, MatLike, MatLike]
     """
     img = cv2.imread(img_path, 1)
-    success, corners = cv2.findChessboardCorners(img, pattern_size)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    success, corners = cv2.findChessboardCorners(gray, pattern_size)
     if success != 0:
         res_img = cv2.drawChessboardCorners(img, pattern_size, corners, True)
         return success, corners, res_img

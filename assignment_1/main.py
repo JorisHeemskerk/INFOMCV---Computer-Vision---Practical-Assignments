@@ -8,7 +8,10 @@ from autmatic_corners import automatic_corner_detector
 from manual_corners import manual_corner_selector
 
 
-def detect_corners(folder: str, output_folder: str)-> None:
+def detect_corners(
+    folder: str,
+    output_folder: str
+)-> tuple[list, cv2.typing.MatLike]:
     """
     Detect the corners of the chessboards in every image in provided
     folder. 
@@ -18,6 +21,8 @@ def detect_corners(folder: str, output_folder: str)-> None:
     and then close the window(s). A user can right click to show where
     a corner would be placed, in a separate window, as well as left 
     click to place a definitive marker.
+    Some code inspired by:
+    https://docs.opencv.org/4.x/dc/dbb/tutorial_py_calibration.html
     
     :param folder: Folder in which input images are saved.
     :type folder: str
@@ -25,13 +30,10 @@ def detect_corners(folder: str, output_folder: str)-> None:
     will be saved in a subdirectory called "corners". And the corner
     points will also be saved in a subdirectory called "data"
     :type output_folder: str
+    :return: List containing all the found corners of all images in 
+        folder.
+    :rtype: list
     """
-    # threedpoints = []
-    # twodpoints = []
-
-    # objectp3d = np.zeros((1, 9 * 6, 3), np.float32)
-    # objectp3d[0, :, :2] = np.mgrid[0:9, 6].T.reshape(-1, 2)
-    # Read and sort the filenames, exclude hidden files.
     filenames = sorted([
         filename for filename in os.listdir(folder) if filename[0] != "."
     ], key=lambda s: int(re.search(r'\d+', s).group()))
@@ -47,15 +49,16 @@ def detect_corners(folder: str, output_folder: str)-> None:
                 "corners and then close the image."
             )
             success, corners, img = manual_corner_selector(folder + filename)
-
-    #     threedpoints.append(objectp3d)
-    #     # tutorial refines pixel coordinates for given 2d points with
-    #     # cv2.cornerSubPix
-    #     twodpoints.append(corners)
-    #     cv2.imwrite(output_folder + filename, img)
-    # return threedpoints, twodpoints
+        # Correct corners by looking at surrounding pixels.
+        corners_corrected = cv2.cornerSubPix(
+            cv2.cvtColor(cv2.imread(folder + filename, 1), cv2.COLOR_BGR2GRAY),
+            corners,
+            (11,11),
+            (-1,-1), # No dead region.
+            (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+        )
     
-        corners_all_images.append(corners)
+        corners_all_images.append(corners_corrected)
         cv2.imwrite(output_folder + "corners/" + filename, img)
 
     os.mkdir(output_folder + "data/")
@@ -63,19 +66,45 @@ def detect_corners(folder: str, output_folder: str)-> None:
         output_folder + "data/corners_all_images.npy", 
         np.array(corners_all_images)
     )
+    return corners_all_images, img.shape[:2]
+
+
+def calibrate_camera(
+    all_corners: list,
+    img_shape: cv2.typing.MatLike,
+    pattern_size: cv2.typing.Size=[9,6]
+)-> cv2.typing.MatLike:
+    """
+    """
+    objp = np.zeros((pattern_size[0]*pattern_size[1],3), np.float32)
+    objp[:,:2] = np.mgrid[0:pattern_size[0], 0:pattern_size[1]].T.reshape(-1,2)
+    real_points = [objp.copy() for _ in range(len(all_corners))]
+    # print(real_points[0])
+    # print(all_corners[0])
+    # print(img_shape)
+    # exit()
+
+    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(
+        real_points,
+        all_corners,
+        img_shape[::-1],
+        None,
+        None
+    )
+    print(f"{ret = }")
+    print(f"{mtx = }")
+    print(f"{dist = }")
+    print(f"{rvecs = }")
+    print(f"{tvecs = }")
 
 def main()-> None:
     # Create output folder for the finished images.
     output_folder = "assignment_1/output/run_" + \
         f"{datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S")}/"
     os.mkdir(output_folder)
-    # threedpoints, twodpoints = detect_corners("assignment_1/data/", output_folder)
 
-    # ret, matrix, distortion, r_vecs, t_vecs = cv2.calibrateCamera(
-    #     threedpoints, twodpoints, grayColor.shape[::-1], None, None
-    # )
-
-    detect_corners("assignment_1/data/", output_folder)
+    all_corners, img_shape = detect_corners("assignment_1/data/", output_folder)
+    calibrate_camera(all_corners, img_shape)
 
 if __name__ == "__main__":
     main()
