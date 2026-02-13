@@ -16,10 +16,10 @@ def manual_corner_selector(
 )-> tuple[bool, cv2.typing.MatLike, cv2.typing.MatLike]:
     """
     Manually tries to find the corners on a chess board. The user needs
-    to left-click on the four outermost corners (For more accuracy the
-    user can right-click on the image to open a separate window with
-    a zoomed in area). These corners are used to calculate all the
-    corners of the chess board.
+    to left-click on the four corners (1 in from the outermost). For
+    more accuracy the user can right-click on the image to open a
+    separate window with a zoomed in area. These corners are used to
+    calculate all the corners of the chess board.
     Returns if succeeded, along with the image containing the rendered
     corners (if not successful, returns the raw image).
     
@@ -37,8 +37,7 @@ def manual_corner_selector(
         event: int,
         x: int,
         y: int,
-        flags: int,
-        params: any | None
+        flags: int
     )-> None:
         """
         Mouse interaction with an opened cv2 window event handler.
@@ -54,8 +53,6 @@ def manual_corner_selector(
         :type y: int
         :param flags: One of the cv::MouseEventFlags constants.
         :type flags: int
-        :param params: Optional parameters.
-        :type params: any | None
         """
         if event == cv2.EVENT_LBUTTONDOWN and len(image_corners) < 4:
             image_corners.append((x, y))
