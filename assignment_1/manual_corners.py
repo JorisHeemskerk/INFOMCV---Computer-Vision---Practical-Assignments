@@ -37,7 +37,8 @@ def manual_corner_selector(
         event: int,
         x: int,
         y: int,
-        flags: int
+        flags: int,
+        userdata: any | None
     )-> None:
         """
         Mouse interaction with an opened cv2 window event handler.
@@ -80,10 +81,10 @@ def manual_corner_selector(
     if len(image_corners)==4:
         corners = find_corners(image_corners, pattern_size)
         res_img = cv2.drawChessboardCorners(zoom, pattern_size, corners, True)
-        return True, corners, res_img
+        return 1, corners, res_img
     else:
         print("The correct amount of corners `4` was not provided")
-        return False, [], img
+        return 0, [], img
 
 
 def find_corners(
