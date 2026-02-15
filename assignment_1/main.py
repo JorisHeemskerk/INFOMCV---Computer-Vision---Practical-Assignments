@@ -6,7 +6,7 @@ import numpy as np
 
 from calibration import calibrate_camera, get_rvec_tvec
 from detect_corners import detect_corners
-from display_objects import display_axis_cube, display_axis_cube_live
+from display_objects import display_axis_cube, display_axis_cube_video
 
 
 def main()-> None:
@@ -57,9 +57,16 @@ def main()-> None:
     # previous_run_data_dir = "insert_path_here"
     # all_corners = np.load(previous_run_data_dir + "corners_all_images.npy")
     # img_shape   = np.load(previous_run_data_dir + "img_shape.npy")
-    
+
+
+    ####################################################################
+    #                      Calibrate the camera.                       #
+    ####################################################################
     ret, mtx, dist, rvecs, tvecs = calibrate_camera(all_corners, img_shape)
 
+    ####################################################################
+    #           Display the axis and cube on the test image.           #
+    ####################################################################
     # display_axis_cube(
     #     "assignment_1/data/test/img_25.jpg",
     #     *get_rvec_tvec("assignment_1/data/test/img_25.jpg", mtx, dist),
@@ -68,7 +75,11 @@ def main()-> None:
     #     "image",
     #     True
     # )
-    display_axis_cube_live(cv2.VideoCapture(0), mtx, dist, "video")
+
+    ####################################################################
+    #          Display the axis and cube on the live webcam.           #
+    ####################################################################
+    display_axis_cube_video(cv2.VideoCapture(0), mtx, dist, "video")
 
 if __name__ == "__main__":
     main()

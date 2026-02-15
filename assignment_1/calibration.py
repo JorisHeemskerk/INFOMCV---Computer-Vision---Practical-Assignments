@@ -76,7 +76,7 @@ def get_rvec_tvec(
     """
     if type(source) == str:
         img = cv2.imread(source, 1)
-        corners, _ = detect_corners(source, pattern_size)
+        corners, _ = detect_corners(source, None, pattern_size)
         # Extract the first and only corners element.
         corners = corners[0]
     else:

@@ -201,14 +201,14 @@ def display_axis_cube(
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
-def display_axis_cube_live(
+def display_axis_cube_video(
     capture: cv2.VideoCapture,
     mtx: cv2.typing.MatLike, 
     dist: cv2.typing.MatLike,
     win_name: str,
 )-> None:
     """
-    Display an axis and a cube on top of an image.
+    Display an axis and a cube on top of a VideoCapture object..
 
     :param capture: OpenCV VideoCapture object
     :type capture: cv2.VideoCapture

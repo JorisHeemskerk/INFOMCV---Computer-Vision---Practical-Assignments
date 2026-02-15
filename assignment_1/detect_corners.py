@@ -166,6 +166,9 @@ def manual_corner_selector(
         :type x: int
         :param y: The y-coordinate of the mouse event.
         :type y: int
+        :param params: Optional parameters to pass to the function. This
+            parameter is not used in this function.
+        :type params: int
         :param flags: One of the cv::MouseEventFlags constants. This
             parameter is not used in this function.
         :type flags: int
