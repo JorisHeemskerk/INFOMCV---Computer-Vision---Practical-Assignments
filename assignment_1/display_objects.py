@@ -226,9 +226,9 @@ def display_axis_cube_video(
     :return: The modified image
     :rtype: MatLike
     """
+    print("\nPress [esc] or [q] to close the window.")
     while True:
-        success, frame = capture.read()
-        print(success)
+        _, frame = capture.read()
         display_axis_cube(
             frame, 
             *get_rvec_tvec(frame, mtx, dist),

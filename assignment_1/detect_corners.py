@@ -184,6 +184,7 @@ def manual_corner_selector(
             cv2.circle(zoom_display, (10, 10), 0, (255, 0, 0))
             zoom_display = cv2.resize(zoom_display, (200, 200))
             cv2.imshow('zoom', zoom_display)
+            cv2.setWindowProperty("zoom", cv2.WND_PROP_TOPMOST, 1)
 
     image_corners = []
 
