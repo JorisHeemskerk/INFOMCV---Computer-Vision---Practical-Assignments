@@ -1,11 +1,109 @@
-"""
-This file allows one to select points on an image for manual calibration.
-
-
-"""
-
 import cv2
+import os
+import re
+import numpy as np
 
+
+def detect_corners(
+    source: str,
+    output_folder: str | None=None
+)-> tuple[list, cv2.typing.MatLike]:
+    """
+    Detect the corners of the chessboards in every image in provided
+    folder. 
+    
+    Function first attempts to select the corners automatically. If this
+    fails, the user is prompted to select the four outer corners by hand
+    and then close the window(s). A user can right click to show where
+    a corner would be placed, in a separate window, as well as left 
+    click to place a definitive marker.
+    Some code inspired by:
+    https://docs.opencv.org/4.x/dc/dbb/tutorial_py_calibration.html
+    
+    :param source: Folder in which input images are saved. If this
+        source is a folder, all images will be read, if it instead is a
+        file, only that file will be read.
+    :type source: str
+    :param output_folder: Folder to which output is saved. The corners
+        will be saved in a subdirectory called "corners". And the corner
+        points will also be saved in a subdirectory called "data". If
+        output_folder is None, no data will be saved.
+    :type output_folder: str | None
+    :return: List containing all the found corners of all images in 
+        folder.
+    :rtype: list
+    """
+    filenames = [source]
+    if os.path.isdir(source):
+        filenames = sorted([
+            source + filename for filename in os.listdir(source) \
+                if filename[0] != "."
+        ], key=lambda s: int(re.search(r'\d+', s).group()))
+    if output_folder:
+        os.makedirs(output_folder + "corners/")
+
+    corners_all_images = []
+    for filename in filenames:
+        success, corners, img = automatic_corner_detector(filename)
+        while success == 0:
+            print(
+                f"Corners were not automatically or fully manually detected in"
+                f" image {filename}.\nPlease manually click on the four "
+                "corners and then close the image."
+            )
+            success, corners, img = manual_corner_selector(filename)
+        # Correct corners by looking at surrounding pixels.
+        corners_corrected = cv2.cornerSubPix(
+            cv2.cvtColor(cv2.imread(filename, 1), cv2.COLOR_BGR2GRAY),
+            corners,
+            (11,11), # Search window.
+            (-1,-1), # No dead region.
+            (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+        )
+    
+        corners_all_images.append(corners_corrected)
+        if output_folder:
+            cv2.imwrite(output_folder + "corners/" + filename, img)
+
+    if output_folder:
+        os.mkdir(output_folder + "data/")
+        np.save(
+            output_folder + "data/corners_all_images.npy", 
+            np.array(corners_all_images)
+        )
+        np.save(
+            output_folder + "data/img_shape.npy", 
+            np.array(img.shape[:2])
+        )
+    return corners_all_images, img.shape[:2]
+
+def automatic_corner_detector(
+    img_path: str, 
+    pattern_size: cv2.typing.Size=[9,6]
+)-> tuple[bool, cv2.typing.MatLike, cv2.typing.MatLike]:
+    """
+    Automatically tries to detect corners on a chess board.
+    Returns if succeeded, along with the image containing the rendered
+    corners (if not successful, returns the raw image).
+    
+    :param img_path: The path to the input image.
+    :type img_path: str
+    :param pattern_size: The size of the chessboard (n_rows x n_columns)
+        counted as the number of inner corners.
+    :type pattern_size: Size
+    :return: A boolean witch reflects if the operation failed or not,
+        the corners that were detected, along with the image that has 
+        the rendered corners on it.
+    :rtype: tuple[bool, MatLike, MatLike]
+    """
+    img = cv2.imread(img_path, 1)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    success, corners = cv2.findChessboardCorners(gray, pattern_size)
+    if success != 0:
+        res_img = cv2.drawChessboardCorners(img, pattern_size, corners, True)
+        return success, corners, res_img
+    else:
+        return success, [], img
 
 def manual_corner_selector(
     img_path: str,
@@ -19,6 +117,10 @@ def manual_corner_selector(
     calculate all the corners of the chess board, using `find_corners`.
     Returns if succeeded, along with the image containing the rendered
     corners (if not successful, returns the raw image).
+
+    Code based on geeksforgeeks tutorial `Displaying the coordinates of 
+    the points clicked on the image using Python-OpenCV`. Link: 
+    https://www.geeksforgeeks.org/python/displaying-the-coordinates-of-the-points-clicked-on-the-image-using-python-opencv/
     
     :param img_path: The path to the input image.
     :type img_path: str
@@ -35,7 +137,6 @@ def manual_corner_selector(
         x: int,
         y: int,
         flags: int,
-        userdata: any | None
     )-> None:
         """
         Mouse interaction with an opened cv2 window event handler.
@@ -82,7 +183,6 @@ def manual_corner_selector(
     else:
         print("The correct amount of corners `4` was not provided")
         return 0, [], img
-
 
 def find_corners(
     image_corners: list[tuple[int, int]],
