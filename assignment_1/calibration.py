@@ -1,9 +1,11 @@
 import cv2
 import numpy as np
 
+from detect_corners import detect_corners, automatic_corner_detector
+
 
 def calibrate_camera(
-    all_corners: list,
+    all_corners: list[list[tuple[float, float]]],
     img_shape: cv2.typing.MatLike,
     pattern_size: cv2.typing.Size=[9,6]
 )-> tuple[
@@ -14,7 +16,21 @@ def calibrate_camera(
     tuple[cv2.typing.MatLike]
 ]:
     """
-    TODO
+    Calibrate a camera based on a set of detected corners from chess 
+    boards.
+
+    First, this function establishes real-world xyz coordinates. These
+    are used together with the detected `all_corners`, in order to
+    estimate the camera properties.
+
+    :param all_corners: Container for all the corners of all the images.
+    :type all_corners: list[list[tuple[float, float]]]
+    :param img_shape: Shape (x,y) of the original images in pixels.
+    :type img_shape: cv2.typing.MatLike
+    :param pattern_size: The number of intersections on the chessboard.
+    :type pattern_size: cv2.typing.Size
+    :return: Ret, mtx, dist, rvecs, tvecs.
+    :rtype: tuple[float, MatLike, MatLike, tuple[MatLike], tuple[MatLike]]
     """
     # Create real-world coordinates, starting at 0,0,0 for the top-left
     # point, taking steps of 1 for each new intersection.
@@ -29,3 +45,56 @@ def calibrate_camera(
         None,
         None
     )
+
+def get_rvec_tvec(
+    source: str | cv2.typing.MatLike,
+    mtx: cv2.typing.MatLike,
+    dist: cv2.typing.MatLike,
+    pattern_size: cv2.typing.Size=[9,6]
+)-> tuple[cv2.typing.MatLike | None, cv2.typing.MatLike | None]:
+    """
+    Get the rotation and translation vectors form an image.
+
+    Calculate the rotation and translation vectors from an image using
+    the calibrated matrix and distances. This function detects the
+    chessboard corners in an image and calculates the vectors. If the
+    provided image comes from a file, the user may be prompted to 
+    manually detect the corners. If an already loaded image is passed,
+    and no corners can automatically be detected, the function will
+    return two None vectors.
+
+    :param source: Path to input image or an actual input image
+    :type source: str | cv2.typing.MatLike
+    :param mtx: Description
+    :type mtx: cv2.typing.MatLike
+    :param dist: Description
+    :type dist: cv2.typing.MatLike
+    :param pattern_size: Description
+    :type pattern_size: cv2.typing.Size
+    :return: Description
+    :rtype: tuple[MatLike, MatLike]
+    """
+    if type(source) == str:
+        img = cv2.imread(source, 1)
+        corners, _ = detect_corners(source, pattern_size)
+        # Extract the first and only corners element.
+        corners = corners[0]
+    else:
+        img = source.copy()
+        success, corners, _ = automatic_corner_detector(img, pattern_size)
+        if success == 0:
+            return None, None
+
+    corners_corrected = cv2.cornerSubPix(
+        cv2.cvtColor(img, cv2.COLOR_BGR2GRAY),
+        corners,
+        (11,11),
+        (-1,-1), # No dead region.
+        (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+    )
+
+    objp = np.zeros((pattern_size[0]*pattern_size[1],3), np.float32)
+    objp[:,:2] = np.mgrid[0:pattern_size[0], 0:pattern_size[1]].T.reshape(-1,2)
+
+    _, rvec, tvec = cv2.solvePnP(objp, corners_corrected, mtx, dist)
+    return rvec, tvec

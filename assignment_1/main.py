@@ -4,9 +4,9 @@ import re
 import datetime
 import numpy as np
 
+from calibration import calibrate_camera, get_rvec_tvec
 from detect_corners import detect_corners
-from calibration import calibrate_camera
-from processing import process_image
+from display_objects import display_axis_cube, display_axis_cube_live
 
 
 def main()-> None:
@@ -60,11 +60,15 @@ def main()-> None:
     
     ret, mtx, dist, rvecs, tvecs = calibrate_camera(all_corners, img_shape)
 
-    process_image(
-        "assignment_1/data/test/img_1.jpg",
-        mtx,
-        dist,
-    )
+    # display_axis_cube(
+    #     "assignment_1/data/test/img_25.jpg",
+    #     *get_rvec_tvec("assignment_1/data/test/img_25.jpg", mtx, dist),
+    #     mtx,
+    #     dist,
+    #     "image",
+    #     True
+    # )
+    display_axis_cube_live(cv2.VideoCapture(0), mtx, dist, "video")
 
 if __name__ == "__main__":
     main()

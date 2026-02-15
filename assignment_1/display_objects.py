@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
 
+from calibration import get_rvec_tvec
+
 
 def draw_axis(
     img: cv2.typing.MatLike,
@@ -127,3 +129,115 @@ def draw_cube(
         1,
         (0, 0, 255)
     )
+
+
+def draw_axis_cube(
+    source: str | cv2.typing.MatLike,
+    rvec: cv2.typing.MatLike | None, 
+    tvec: cv2.typing.MatLike | None, 
+    mtx: cv2.typing.MatLike, 
+    dist: cv2.typing.MatLike
+)-> cv2.typing.MatLike:
+    """
+    Draw an axis and a cube on top of an image.
+
+    :param source: Path to an image or an actual image.
+    :type source: str | cv2.typing.MatLike
+    :param rvec: Rotation vector.
+    :type rvec: cv2.typing.MatLike | None
+    :param tvec: Translation vector.
+    :type tvec: cv2.typing.MatLike | None
+    :param mtx: Calibration matrix.
+    :type mtx: cv2.typing.MatLike
+    :param dist: Distance matrix.
+    :type dist: cv2.typing.MatLike
+    :return: The modified image
+    :rtype: MatLike
+    """
+    if type(source) == str:
+        img = cv2.imread(source, 1)
+    else:
+        img = source.copy()
+
+    if rvec is None or tvec is None:
+        return img
+    draw_axis(img, rvec, tvec, mtx, dist)
+    draw_cube(img, rvec, tvec, mtx, dist)
+    return img
+
+def display_axis_cube(
+    source: str | cv2.typing.MatLike,
+    rvec: cv2.typing.MatLike | None, 
+    tvec: cv2.typing.MatLike | None, 
+    mtx: cv2.typing.MatLike, 
+    dist: cv2.typing.MatLike,
+    win_name: str,
+    wait: bool
+)-> None:
+    """
+    Display an axis and a cube on top of an image.
+
+    :param source: Path to an image or an actual image.
+    :type source: str | cv2.typing.MatLike
+    :param rvec: Rotation vector.
+    :type rvec: cv2.typing.MatLike | None
+    :param tvec: Translation vector.
+    :type tvec: cv2.typing.MatLike | None
+    :param mtx: Calibration matrix.
+    :type mtx: cv2.typing.MatLike
+    :param dist: Distance matrix.
+    :type dist: cv2.typing.MatLike
+    :param win_name: Window name.
+    :type win_name: str 
+    :type wait: If true, handle as stationary image, if false, 
+        handle as video.
+    :type wait: bool 
+    :return: The modified image
+    :rtype: MatLike
+    """
+    img = draw_axis_cube(source, rvec, tvec, mtx, dist)
+    cv2.imshow(win_name, img)
+    if wait:
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+def display_axis_cube_live(
+    capture: cv2.VideoCapture,
+    mtx: cv2.typing.MatLike, 
+    dist: cv2.typing.MatLike,
+    win_name: str,
+)-> None:
+    """
+    Display an axis and a cube on top of an image.
+
+    :param capture: OpenCV VideoCapture object
+    :type capture: cv2.VideoCapture
+    :param rvec: Rotation vector.
+    :type rvec: cv2.typing.MatLike | None
+    :param tvec: Translation vector.
+    :type tvec: cv2.typing.MatLike | None
+    :param mtx: Calibration matrix.
+    :type mtx: cv2.typing.MatLike
+    :param dist: Distance matrix.
+    :type dist: cv2.typing.MatLike
+    :param win_name: Window name.
+    :type win_name: str 
+        handle as video.
+    :return: The modified image
+    :rtype: MatLike
+    """
+    while True:
+        success, frame = capture.read()
+        print(success)
+        display_axis_cube(
+            frame, 
+            *get_rvec_tvec(frame, mtx, dist),
+            mtx, 
+            dist, 
+            win_name, 
+            False
+        )
+        if cv2.waitKey(1) == ord('q') or cv2.waitKey(1) == 27:
+            break
+    capture.release()
+    cv2.destroyAllWindows()
