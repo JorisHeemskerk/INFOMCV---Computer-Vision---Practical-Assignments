@@ -77,9 +77,53 @@ def main()-> None:
     # )
 
     ####################################################################
+    #                          CHOICE TASK 1                           #
     #          Display the axis and cube on the live webcam.           #
     ####################################################################
     display_axis_cube_video(cv2.VideoCapture(0), mtx, dist, "video")
+
+    ####################################################################
+    #                          CHOICE TASK 5                           #
+    #  Enhance the input images before attempting to detect corners.   #
+    ####################################################################
+    # img = cv2.imread("assignment_1/data/test.jpg")
+
+    # adjusted_image = cv2.detailEnhance(image, sigma_s=10, sigma_r=0.15)
+
+    # gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    # adjusted_image = clahe.apply(gray)
+    # # adjusted_image = cv2.medianBlur(adjusted_image, 5)
+
+
+    # gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    # blur = cv2.GaussianBlur(gray, (0,0), 1.0)
+    # sharp = cv2.addWeighted(gray, 1.5, blur, -0.5, 0)
+
+    # scale = 2.0
+    # adjusted_image = cv2.resize(sharp, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+
+    # gamma = 1.5  # try 0.5 - 2.5
+    # invGamma = 1.0 / gamma
+    # table = np.array([(i / 255.0) ** invGamma * 255
+    #                 for i in np.arange(256)]).astype("uint8")
+    # adjusted_image = cv2.LUT(adjusted_image, table)
+
+    # adjusted_image = cv2.GaussianBlur(adjusted_image, (5,5), 0)
+
+    # gray = cv2.cvtColor(adjusted_image, cv2.COLOR_BGR2GRAY)
+    # kernel = np.array([[0,-1,0],
+    #                 [-1,5,-1],
+    #                 [0,-1,0]])
+    # adjusted_image = cv2.filter2D(gray, -1, kernel)
+
+
+    
+
+
+    # detect_corners(img, output_folder="test_enhanced/")
+    # detect_corners("assignment_1/data/mix/img_23.jpg", output_folder="test_raw/")
 
 if __name__ == "__main__":
     main()

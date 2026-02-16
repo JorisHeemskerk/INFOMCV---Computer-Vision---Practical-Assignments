@@ -209,7 +209,7 @@ def manual_corner_selector(
 
     cv2.waitKey(0)
     cv2.destroyAllWindows()
-    return 1, [], img
+    # return 1, [], img TODO
     
 
     if len(image_corners)==4:

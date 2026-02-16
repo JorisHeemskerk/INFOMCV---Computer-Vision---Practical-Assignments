@@ -99,12 +99,23 @@ def draw_cube(
     camera_position = np.dot(rmat, np.array([[1], [1], [2]])) + tvec
     distance = np.linalg.norm(camera_position) * square_size
 
-    if distance > 4:
-        v = 255
-    else:
-        v = int((distance / 4) * 255)
+    # Calculate the scale of the distance (between 0 and 4 meters),
+    # subtract from 1, scale by 255, cap at minimum of 0.
+    v = max(0, int((1 - (distance / 4)) * 255))
 
-    h = 60 # TODO: change this so it reflects the angle the polygon has
+    # Calculate the scale of the distance (between 0 and 45 degrees),
+    # subtract from 1, scale by 255, cap at minimum of 0.
+    h = max(
+        0, 
+        int(
+            (1 - abs(np.arctan2(rmat[0,1], rmat[1,1])* 180 / np.pi) / 45) * \
+            255
+        )
+    )
+
+    # print(rmat)
+    # print(rmat[0,0], rmat[1,0])
+    # print(h)
 
     hsv_color = np.uint8([[[h, 255, v]]])
     bgr_color = cv2.cvtColor(hsv_color, cv2.COLOR_HSV2BGR)[0][0]
