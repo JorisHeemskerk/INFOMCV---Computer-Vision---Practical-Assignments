@@ -23,8 +23,9 @@ def detect_corners(
     
     :param source: Folder in which input images are saved. If this
         source is a folder, all images will be read, if it instead is a
-        file, only that file will be read.
-    :type source: str
+        file, only that file will be read, if it is an image, the image
+        will be used.
+    :type source: str | MatLike
     :param output_folder: Folder to which output is saved. The corners
         will be saved in a subdirectory called "corners". And the corner
         points will also be saved in a subdirectory called "data". If
@@ -53,7 +54,6 @@ def detect_corners(
             source, 
             pattern_size
         )
-        print(success)
         while success == 0:
             print(
                 f"Corners were not automatically or fully manually detected in"
