@@ -5,10 +5,10 @@ import numpy as np
 
 
 def detect_corners(
-    source: str,
+    source: str | cv2.typing.MatLike,
     output_folder: str | None=None,
     pattern_size: cv2.typing.Size=[9,6]
-)-> tuple[list, cv2.typing.MatLike]:
+)-> tuple[list[list[tuple[float, float]]], cv2.typing.MatLike]:
     """
     Detect the corners of the chessboards in every image in provided
     folder. 
@@ -33,38 +33,43 @@ def detect_corners(
     :param pattern_size: The size of the chessboard (n_rows x n_columns)
         counted as the number of inner corners.
     :type pattern_size: Size
-    :return: List containing all the found corners of all images in 
-        folder.
-    :rtype: list
+    :return: List containing all the found corners of all provided 
+        images, along with image dimensions
+    :rtype: tuple[list[list[tuple[float, float]]], cv2.typing.MatLike]
     """
-    filenames = [source]
-    if os.path.isdir(source):
-        filenames = sorted([
-            source + filename for filename in os.listdir(source) \
-                if filename[0] != "."
-        ], key=lambda s: int(re.search(r'\d+', s).group()))
+    sources = [source]
+    if type(source) == str:
+        if os.path.isdir(source):
+            sources = sorted([
+                source + filename for filename in os.listdir(source) \
+                    if filename[0] != "."
+            ], key=lambda s: int(re.search(r'\d+', s).group()))
     if output_folder:
         os.makedirs(output_folder + "corners/")
 
     corners_all_images = []
-    for filename in filenames:
+    for i, source in enumerate(sources):
         success, corners, img = automatic_corner_detector(
-            filename, 
+            source, 
             pattern_size
         )
+        print(success)
         while success == 0:
             print(
                 f"Corners were not automatically or fully manually detected in"
-                f" image {filename}.\nPlease manually click on the four "
-                "corners and then close the image."
+                f" image {source if type(source) == str else ''}.\nPlease "
+                "manually click on the four corners and then close the image."
             )
             success, corners, img = manual_corner_selector(
-                filename, 
+                source, 
                 pattern_size
             )
         # Correct corners by looking at surrounding pixels.
         corners_corrected = cv2.cornerSubPix(
-            cv2.cvtColor(cv2.imread(filename, 1), cv2.COLOR_BGR2GRAY),
+            cv2.cvtColor(
+                cv2.imread(source, 1) if type(source) == str else source, 
+                cv2.COLOR_BGR2GRAY
+            ),
             corners,
             (11,11), # Search window.
             (-1,-1), # No dead region.
@@ -73,6 +78,9 @@ def detect_corners(
     
         corners_all_images.append(corners_corrected)
         if output_folder:
+            filename = source.split("/")[-1] if type(source) == str \
+                else f"source_{i}.jpg"
+            print(filename)
             cv2.imwrite(output_folder + "corners/" + filename, img)
 
     if output_folder:
@@ -110,9 +118,11 @@ def automatic_corner_detector(
         img = cv2.imread(source, 1)
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         success, corners = cv2.findChessboardCorners(gray, pattern_size)
+        # success, corners = cv2.findChessboardCornersSB(gray, pattern_size, flags=cv2.CALIB_CB_EXHAUSTIVE | cv2.CALIB_CB_ACCURACY)
     else:
         img = source.copy()
         success, corners = cv2.findChessboardCorners(img, pattern_size)
+        # success, corners = cv2.findChessboardCornersSB(img, pattern_size, flags=cv2.CALIB_CB_EXHAUSTIVE | cv2.CALIB_CB_ACCURACY)
 
     if success != 0:
         res_img = cv2.drawChessboardCorners(img, pattern_size, corners, True)
@@ -121,7 +131,7 @@ def automatic_corner_detector(
         return success, [], img
 
 def manual_corner_selector(
-    img_path: str,
+    source: str | cv2.typing.MatLike, 
     pattern_size: cv2.typing.Size=[9,6]
 )-> tuple[bool, cv2.typing.MatLike, cv2.typing.MatLike]:
     """
@@ -137,8 +147,8 @@ def manual_corner_selector(
     the points clicked on the image using Python-OpenCV`. Link: 
     https://www.geeksforgeeks.org/python/displaying-the-coordinates-of-the-points-clicked-on-the-image-using-python-opencv/
     
-    :param img_path: The path to the input image.
-    :type img_path: str
+    :param source: The path to the input image or an actual image.
+    :type source: str | cv2.typing.MatLike
     :param pattern_size: The size of the chessboard (n_rows x n_columns)
         counted as the number of inner corners.
     :type pattern_size: Size
@@ -188,13 +198,19 @@ def manual_corner_selector(
 
     image_corners = []
 
-    img = cv2.imread(img_path, 1)
+    if type(source) == str:
+        img = cv2.imread(source, 1)
+        zoom = cv2.imread(source, 1)
+    else:
+        img = source.copy()
+        zoom = source.copy()
     cv2.imshow('image', img)
     cv2.setMouseCallback('image', click_event)
-    zoom = cv2.imread(img_path, 1)
 
     cv2.waitKey(0)
     cv2.destroyAllWindows()
+    return 1, [], img
+    
 
     if len(image_corners)==4:
         corners = find_corners(image_corners, pattern_size)
