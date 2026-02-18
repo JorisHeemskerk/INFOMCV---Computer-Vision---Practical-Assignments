@@ -14,7 +14,21 @@ def draw_axis(
     square_size: float=0.024
 )-> None:
     """
-    TODO
+    Draw X, Y and Z axis on top of the chessboard from the corner that
+    is defined as (0, 0, 0) in world coordinates onto a 2D image. 
+
+    :param img: The image.
+    :type img: MatLike
+    :param rvec: Rotation vector.
+    :type rvec: MatLike | None
+    :param tvec: Translation vector.
+    :type tvec: MatLike | None
+    :param mtx: Calibration matrix.
+    :type mtx: MatLike
+    :param dist: Distance matrix.
+    :type dist: MatLike
+    :param square_size: The length of a single chessboard square.
+    :type square_size: float
     """
     axis_points = np.array([
         [0, 0, 0],
@@ -51,7 +65,16 @@ def draw_cube(
 )-> None:
     """
     Draw a cube on top of the chessboard from the corner that is defined
-    as (0, 0, 0) in world 
+    as (0, 0, 0) in world coordinates onto a 2D image. The cube is 2x2x2
+    squares big. In the middle of the top of the cube the distance from
+    this point to the camera is displayed on the image. On the top of
+    the cube a polygon is drawn that covers the entire top of the cube.
+    The colour of this polygon is defined by hsv colour values. The s
+    value is always set to 255. The v value is determined by: the scale
+    of the distance (between 0 and 4 meters), scale by 255, cap at
+    minimum of 0. The h value is determined by: the scale of the
+    distance (between 0 and 45 degrees), scale by 255, cap at minimum of
+    0.
 
     :param img: The image.
     :type img: MatLike
