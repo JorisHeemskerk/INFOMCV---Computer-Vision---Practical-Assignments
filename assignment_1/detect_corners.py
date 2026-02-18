@@ -64,6 +64,7 @@ def detect_corners(
                 source, 
                 pattern_size
             )
+            exit()
         # Correct corners by looking at surrounding pixels.
         corners_corrected = cv2.cornerSubPix(
             cv2.cvtColor(
@@ -118,11 +119,9 @@ def automatic_corner_detector(
         img = cv2.imread(source, 1)
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         success, corners = cv2.findChessboardCorners(gray, pattern_size)
-        # success, corners = cv2.findChessboardCornersSB(gray, pattern_size, flags=cv2.CALIB_CB_EXHAUSTIVE | cv2.CALIB_CB_ACCURACY)
     else:
         img = source.copy()
         success, corners = cv2.findChessboardCorners(img, pattern_size)
-        # success, corners = cv2.findChessboardCornersSB(img, pattern_size, flags=cv2.CALIB_CB_EXHAUSTIVE | cv2.CALIB_CB_ACCURACY)
 
     if success != 0:
         res_img = cv2.drawChessboardCorners(img, pattern_size, corners, True)
