@@ -136,9 +136,10 @@ def check_image_calibration_contribution(
     :type all_corners: np.ndarray
     :param img_shape: 
     :type img_shape: MatLike
-    :param pattern_size: 
+    :param pattern_size: The size of the chessboard (n_rows x n_columns)
+        counted as the number of inner corners.
     :type pattern_size: Size
-    :param square_size: 
+    :param square_size: The length of a single chessboard square.
     :type square_size: float
     :return: List of flags with 1 when image has positive 
         contribution and 0 if not, along with the calibration 
