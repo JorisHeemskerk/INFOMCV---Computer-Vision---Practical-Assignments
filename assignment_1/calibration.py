@@ -128,13 +128,17 @@ def check_image_calibration_contribution(
         tuple[cv2.typing.MatLike]
     ]]:
     """
-
+    Performs leave-one-out cross validation to determine for each image
+    if it has a positive or negative effect on the error. All negative
+    impact images are then removed and the new calibration is returned.
+    Along with a mask that shows which images this new calibration 
+    consists of.
     
-    :param all_img_re_proj_err: Description
+    :param all_img_re_proj_err: The re-projection error to compare to.
     :type all_img_re_proj_err: float
     :param all_corners: Container for all the corners of all the images.
     :type all_corners: np.ndarray
-    :param img_shape: 
+    :param img_shape: The shape of the image.
     :type img_shape: MatLike
     :param pattern_size: The size of the chessboard (n_rows x n_columns)
         counted as the number of inner corners.

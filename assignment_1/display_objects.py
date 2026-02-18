@@ -50,7 +50,21 @@ def draw_cube(
     square_size: float=0.024
 )-> None:
     """
-    TODO
+    Draw a cube on top of the chessboard from the corner that is defined
+    as (0, 0, 0) in world 
+
+    :param img: The image.
+    :type img: MatLike
+    :param rvec: Rotation vector.
+    :type rvec: MatLike | None
+    :param tvec: Translation vector.
+    :type tvec: MatLike | None
+    :param mtx: Calibration matrix.
+    :type mtx: MatLike
+    :param dist: Distance matrix.
+    :type dist: MatLike
+    :param square_size: The length of a single chessboard square.
+    :type square_size: float
     """
     cube_points = np.array([
         [0, 0, 0],
@@ -159,15 +173,15 @@ def draw_axis_cube(
     Draw an axis and a cube on top of an image.
 
     :param source: Path to an image or an actual image.
-    :type source: str | cv2.typing.MatLike
+    :type source: str | MatLike
     :param rvec: Rotation vector.
-    :type rvec: cv2.typing.MatLike | None
+    :type rvec: MatLike | None
     :param tvec: Translation vector.
-    :type tvec: cv2.typing.MatLike | None
+    :type tvec: MatLike | None
     :param mtx: Calibration matrix.
-    :type mtx: cv2.typing.MatLike
+    :type mtx: MatLike
     :param dist: Distance matrix.
-    :type dist: cv2.typing.MatLike
+    :type dist: MatLike
     :param square_size: The length of a single chessboard square.
     :type square_size: float
     :return: The modified image
@@ -198,15 +212,15 @@ def display_axis_cube(
     Display an axis and a cube on top of an image.
 
     :param source: Path to an image or an actual image.
-    :type source: str | cv2.typing.MatLike
+    :type source: str | MatLike
     :param rvec: Rotation vector.
-    :type rvec: cv2.typing.MatLike | None
+    :type rvec: MatLike | None
     :param tvec: Translation vector.
-    :type tvec: cv2.typing.MatLike | None
+    :type tvec: MatLike | None
     :param mtx: Calibration matrix.
-    :type mtx: cv2.typing.MatLike
+    :type mtx: MatLike
     :param dist: Distance matrix.
-    :type dist: cv2.typing.MatLike
+    :type dist: MatLike
     :param win_name: Window name.
     :type win_name: str 
     :type wait: If true, handle as stationary image, if false, 
@@ -233,15 +247,15 @@ def display_axis_cube_video(
     Display an axis and a cube on top of a VideoCapture object..
 
     :param capture: OpenCV VideoCapture object
-    :type capture: cv2.VideoCapture
+    :type capture: VideoCapture
     :param rvec: Rotation vector.
-    :type rvec: cv2.typing.MatLike | None
+    :type rvec: MatLike | None
     :param tvec: Translation vector.
-    :type tvec: cv2.typing.MatLike | None
+    :type tvec: MatLike | None
     :param mtx: Calibration matrix.
-    :type mtx: cv2.typing.MatLike
+    :type mtx: MatLike
     :param dist: Distance matrix.
-    :type dist: cv2.typing.MatLike
+    :type dist: MatLike
     :param win_name: Window name.
     :type win_name: str 
         handle as video.
@@ -278,6 +292,10 @@ def plot_calibration_cameras(
     Plot the position and facing direction of the cameras relative to
     the chessboard (outlined in black) in a 3D plot.
 
+    :param rvecs: Tuple of the rotation vectors of all training images.
+    :type rvecs: tuple[MatLike]
+    :param tvecs: Tuple of the translation vectors of all training images.
+    :type tvecs: tuple[MatLike]
     :param pattern_size: The size of the chessboard (n_rows x n_columns)
         counted as the number of inner corners.
     :type pattern_size: Size

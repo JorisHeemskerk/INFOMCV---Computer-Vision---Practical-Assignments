@@ -64,7 +64,6 @@ def detect_corners(
                 source, 
                 pattern_size
             )
-            exit()
         # Correct corners by looking at surrounding pixels.
         corners_corrected = cv2.cornerSubPix(
             cv2.cvtColor(
@@ -207,9 +206,7 @@ def manual_corner_selector(
     cv2.setMouseCallback('image', click_event)
 
     cv2.waitKey(0)
-    cv2.destroyAllWindows()
-    # return 1, [], img TODO
-    
+    cv2.destroyAllWindows()    
 
     if len(image_corners)==4:
         corners = find_corners(image_corners, pattern_size)
