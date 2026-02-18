@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
 
+from tqdm import tqdm
+
 from detect_corners import detect_corners, automatic_corner_detector
 
 
@@ -103,3 +105,67 @@ def get_rvec_tvec(
 
     _, rvec, tvec = cv2.solvePnP(objp, corners_corrected, mtx, dist)
     return rvec, tvec
+
+def check_image_calibration_contribution(
+    all_img_re_proj_err: float,
+    all_corners: np.ndarray,
+    img_shape: cv2.typing.MatLike,
+    pattern_size: cv2.typing.Size=[9,6],
+    square_size: float=0.024
+)-> tuple[
+    np.ndarray, 
+    tuple[
+        float,
+        cv2.typing.MatLike,
+        cv2.typing.MatLike,
+        tuple[cv2.typing.MatLike],
+        tuple[cv2.typing.MatLike]
+    ]]:
+    """
+
+    
+    :param all_img_re_proj_err: Description
+    :type all_img_re_proj_err: float
+    :param all_corners: Container for all the corners of all the images.
+    :type all_corners: np.ndarray
+    :param img_shape: 
+    :type img_shape: MatLike
+    :param pattern_size: 
+    :type pattern_size: Size
+    :param square_size: 
+    :type square_size: float
+    :return: List of flags with 1 when image has positive 
+        contribution and 0 if not, along with the calibration 
+        elements of the best combination of images.
+    :rtype: tuple[
+        np.ndarray, 
+        tuple[
+            float, 
+            MatLike,
+            MatLike,
+            tuple[MatLike],
+            tuple[MatLike]
+        ]]
+    """
+    image_validity_flags = np.zeros(len(all_corners), dtype=bool)
+    for i in tqdm(
+        range(len(all_corners)), 
+        desc="Leaving out 1 image and checking how calibration changes"
+    ):
+        mask = np.ones(len(all_corners), dtype=bool)
+        mask[i] = 0
+        re_proj_err, _, _, _, _ = calibrate_camera(
+            all_corners[mask], 
+            img_shape, 
+            pattern_size, 
+            square_size
+        )
+        # Check if the image has a negative impact on the calibration.
+        if re_proj_err > all_img_re_proj_err:
+            image_validity_flags[i] = 1
+    return image_validity_flags, calibrate_camera(
+            all_corners[image_validity_flags], 
+            img_shape, 
+            pattern_size, 
+            square_size
+        )

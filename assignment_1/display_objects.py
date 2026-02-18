@@ -97,21 +97,14 @@ def draw_cube(
         )
     
     rmat, _ = cv2.Rodrigues(rvec)
-    # R_t = np.column_stack((rmat, tvec))
-    # world_coords = np.array([
-    #     [square_size], 
-    #     [square_size], 
-    #     [2 * square_size], 
-    #     [1]
-    # ])
-    # camera_position = np.dot(R_t, world_coords)
-    
+    R_t = np.column_stack((rmat, tvec))
     world_coords = np.array([
         [square_size], 
         [square_size], 
-        [2 * square_size]
+        [-2 * square_size], 
+        [1]
     ])
-    camera_position = tvec
+    camera_position = np.dot(R_t, world_coords)
     distance = np.linalg.norm(camera_position)
 
     # Calculate the scale of the distance (between 0 and 4 meters),

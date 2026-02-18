@@ -4,7 +4,10 @@ import re
 import datetime
 import numpy as np
 
-from calibration import calibrate_camera, get_rvec_tvec
+from calibration import \
+    calibrate_camera, \
+    get_rvec_tvec, \
+    check_image_calibration_contribution
 from detect_corners import detect_corners
 from display_objects import display_axis_cube, display_axis_cube_video
 
@@ -70,12 +73,12 @@ def main()-> None:
     ####################################################################
     #                      Calibrate the camera.                       #
     ####################################################################
-    _, mtx, dist, _, _ = calibrate_camera(
-        all_corners, 
-        img_shape, 
-        PATTERN_SIZE, 
-        SQUARE_SIZE
-    )
+    # _, mtx, dist, _, _ = calibrate_camera(
+    #     all_corners, 
+    #     img_shape, 
+    #     PATTERN_SIZE, 
+    #     SQUARE_SIZE
+    # )
 
     ####################################################################
     #           Display the axis and cube on the test image.           #
@@ -99,14 +102,40 @@ def main()-> None:
     #                          CHOICE TASK 1                           #
     #          Display the axis and cube on the live webcam.           #
     ####################################################################
-    display_axis_cube_video(
-        cv2.VideoCapture(0), 
-        mtx, 
-        dist, 
-        "video", 
-        PATTERN_SIZE,
+    # display_axis_cube_video(
+    #     cv2.VideoCapture(0), 
+    #     mtx, 
+    #     dist, 
+    #     "video", 
+    #     PATTERN_SIZE,
+    #     SQUARE_SIZE
+    # )
+
+    ####################################################################
+    #                          CHOICE TASK 2                           #
+    #  Iterative detection and rejection of low quality input images.  #
+    ####################################################################
+    all_img_re_proj_err, _, _, _, _ = calibrate_camera(
+        all_corners, 
+        img_shape, 
+        PATTERN_SIZE, 
         SQUARE_SIZE
     )
+    image_validity_flags, (subset_img_re_proj_err, mtx, dist, _, _) = \
+        check_image_calibration_contribution(
+            all_img_re_proj_err, 
+            all_corners, 
+            img_shape, 
+            PATTERN_SIZE, 
+            SQUARE_SIZE
+        )
+    print(image_validity_flags)
+    print(
+        f"Calibration error with all images: {all_img_re_proj_err:.3f}\n"
+        "Calibration error with only positively contributing images: "
+        f"{subset_img_re_proj_err:.3f}"
+    )
+
 
     ####################################################################
     #                          CHOICE TASK 5                           #
