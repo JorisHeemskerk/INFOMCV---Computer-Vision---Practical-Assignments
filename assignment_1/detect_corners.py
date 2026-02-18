@@ -80,7 +80,6 @@ def detect_corners(
         if output_folder:
             filename = source.split("/")[-1] if type(source) == str \
                 else f"source_{i}.jpg"
-            print(filename)
             cv2.imwrite(output_folder + "corners/" + filename, img)
 
     if output_folder:
