@@ -9,7 +9,10 @@ from calibration import \
     get_rvec_tvec, \
     check_image_calibration_contribution
 from detect_corners import detect_corners
-from display_objects import display_axis_cube, display_axis_cube_video
+from display_objects import \
+    display_axis_cube, \
+    display_axis_cube_video, \
+    plot_calibration_cameras
 
 # Pattern size of chessboard
 PATTERN_SIZE = [9,6]
@@ -73,12 +76,12 @@ def main()-> None:
     ####################################################################
     #                      Calibrate the camera.                       #
     ####################################################################
-    # _, mtx, dist, _, _ = calibrate_camera(
-    #     all_corners, 
-    #     img_shape, 
-    #     PATTERN_SIZE, 
-    #     SQUARE_SIZE
-    # )
+    _, mtx, dist, rvecs, tvecs = calibrate_camera(
+        all_corners, 
+        img_shape, 
+        PATTERN_SIZE, 
+        SQUARE_SIZE
+    )
 
     ####################################################################
     #           Display the axis and cube on the test image.           #
@@ -102,38 +105,38 @@ def main()-> None:
     #                          CHOICE TASK 2                           #
     #  Iterative detection and rejection of low quality input images.  #
     ####################################################################
-    all_img_re_proj_err, _, _, _, _ = calibrate_camera(
-        all_corners, 
-        img_shape, 
-        PATTERN_SIZE, 
-        SQUARE_SIZE
-    )
-    image_validity_flags, (subset_img_re_proj_err, mtx, dist, _, _) = \
-        check_image_calibration_contribution(
-            all_img_re_proj_err, 
-            all_corners, 
-            img_shape, 
-            PATTERN_SIZE, 
-            SQUARE_SIZE
-        )
-    print(
-        f"Calibration error with all images: {all_img_re_proj_err:.3f}\n"
-        "Calibration error with only positively contributing images: "
-        f"{subset_img_re_proj_err:.3f}"
-    )
+    # all_img_re_proj_err, _, _, _, _ = calibrate_camera(
+    #     all_corners, 
+    #     img_shape, 
+    #     PATTERN_SIZE, 
+    #     SQUARE_SIZE
+    # )
+    # image_validity_flags, (subset_img_re_proj_err, mtx, dist, _, _) = \
+    #     check_image_calibration_contribution(
+    #         all_img_re_proj_err, 
+    #         all_corners, 
+    #         img_shape, 
+    #         PATTERN_SIZE, 
+    #         SQUARE_SIZE
+    #     )
+    # print(
+    #     f"Calibration error with all images: {all_img_re_proj_err:.3f}\n"
+    #     "Calibration error with only positively contributing images: "
+    #     f"{subset_img_re_proj_err:.3f}"
+    # )
 
     ####################################################################
     #                          CHOICE TASK 1                           #
     #          Display the axis and cube on the live webcam.           #
     ####################################################################
-    display_axis_cube_video(
-        cv2.VideoCapture(0), 
-        mtx, 
-        dist, 
-        "video", 
-        PATTERN_SIZE,
-        SQUARE_SIZE
-    )
+    # display_axis_cube_video(
+    #     cv2.VideoCapture(0), 
+    #     mtx, 
+    #     dist, 
+    #     "video", 
+    #     PATTERN_SIZE,
+    #     SQUARE_SIZE
+    # )
 
     ####################################################################
     #                          CHOICE TASK 5                           #
@@ -177,6 +180,12 @@ def main()-> None:
 
     # detect_corners(img, output_folder="test_enhanced/")
     # detect_corners("assignment_1/data/mix/img_23.jpg", output_folder="test_raw/")
+
+    ####################################################################
+    #                          CHOICE TASK 6                           #
+    #  3D plot the locations of the camera relative to the chessboard  #
+    ####################################################################
+    plot_calibration_cameras(rvecs, tvecs)
 
 if __name__ == "__main__":
     main()

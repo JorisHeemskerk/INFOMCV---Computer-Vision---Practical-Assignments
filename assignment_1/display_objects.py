@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
 
 from calibration import get_rvec_tvec
 
@@ -138,7 +139,7 @@ def draw_cube(
     cv2.circle(img, (top_middle[0], top_middle[1]), 0, (0, 0, 255))
     cv2.putText(
         img,
-        f"{distance}",
+        f"{round(distance, 3)}",
         (top_middle[0], top_middle[1]),
         cv2.FONT_HERSHEY_SIMPLEX,
         1,
@@ -208,9 +209,7 @@ def display_axis_cube(
     :type win_name: str 
     :type wait: If true, handle as stationary image, if false, 
         handle as video.
-    :type wait: bool 
-    :return: The modified image
-    :rtype: MatLike
+    :type wait: bool
     """
     img = draw_axis_cube(source, rvec, tvec, mtx, dist, square_size)
     cv2.imshow(win_name, img)
@@ -242,8 +241,6 @@ def display_axis_cube_video(
     :param win_name: Window name.
     :type win_name: str 
         handle as video.
-    :return: The modified image
-    :rtype: MatLike
     """
     print("\nPress [esc] or [q] to close the window.")
     while True:
@@ -260,3 +257,56 @@ def display_axis_cube_video(
             break
     capture.release()
     cv2.destroyAllWindows()
+
+
+def plot_calibration_cameras(
+    rvecs: tuple[cv2.typing.MatLike],
+    tvecs: tuple[cv2.typing.MatLike],
+    pattern_size: cv2.typing.MatLike=[9,6],
+    square_size: float=0.024
+)-> None:
+    """
+    Plot the position and facing direction of the cameras relative to
+    the chessboard (outlined in black) in a 3D plot.
+
+    :param pattern_size: The size of the chessboard (n_rows x n_columns)
+        counted as the number of inner corners.
+    :type pattern_size: Size
+    """    
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
+
+    for rvec, tvec in zip(rvecs, tvecs):
+        rmat, _ = cv2.Rodrigues(rvec)
+        camera_position = np.dot(-rmat.T, tvec)
+
+        ax.scatter(
+            camera_position[0],
+            camera_position[1],
+            camera_position[2]
+        )
+        
+        # Draw arrow toward chessboard
+        arrow_length = 0.5
+        vec = -camera_position
+        vec = vec / np.linalg.norm(vec) * arrow_length
+        ax.quiver(camera_position[0], camera_position[1], camera_position[2],
+                vec[0], vec[1], vec[2], color='b', alpha=.3)
+
+    # Draw chessboard contour
+    corners = np.array([
+        [0, 0, 0],
+        [(pattern_size[0]-1)*square_size, 0, 0],
+        [(pattern_size[0]-1)*square_size, (pattern_size[1]-1)*square_size, 0],
+        [0, (pattern_size[1]-1)*square_size, 0],
+        [0, 0, 0]  # Close the contour
+    ])
+    ax.plot(corners[:,0], corners[:,1], corners[:,2], c='k', lw=1.5)
+
+    # Set axis labels
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_zlabel("Z")
+    ax.set_title("Training camera positions")
+    
+    plt.show()
