@@ -99,19 +99,6 @@ def main()-> None:
     # )
 
     ####################################################################
-    #                          CHOICE TASK 1                           #
-    #          Display the axis and cube on the live webcam.           #
-    ####################################################################
-    # display_axis_cube_video(
-    #     cv2.VideoCapture(0), 
-    #     mtx, 
-    #     dist, 
-    #     "video", 
-    #     PATTERN_SIZE,
-    #     SQUARE_SIZE
-    # )
-
-    ####################################################################
     #                          CHOICE TASK 2                           #
     #  Iterative detection and rejection of low quality input images.  #
     ####################################################################
@@ -129,13 +116,24 @@ def main()-> None:
             PATTERN_SIZE, 
             SQUARE_SIZE
         )
-    print(image_validity_flags)
     print(
         f"Calibration error with all images: {all_img_re_proj_err:.3f}\n"
         "Calibration error with only positively contributing images: "
         f"{subset_img_re_proj_err:.3f}"
     )
 
+    ####################################################################
+    #                          CHOICE TASK 1                           #
+    #          Display the axis and cube on the live webcam.           #
+    ####################################################################
+    display_axis_cube_video(
+        cv2.VideoCapture(0), 
+        mtx, 
+        dist, 
+        "video", 
+        PATTERN_SIZE,
+        SQUARE_SIZE
+    )
 
     ####################################################################
     #                          CHOICE TASK 5                           #

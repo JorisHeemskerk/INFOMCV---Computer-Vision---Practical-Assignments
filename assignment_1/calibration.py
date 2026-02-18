@@ -101,7 +101,6 @@ def get_rvec_tvec(
     objp = np.zeros((pattern_size[0]*pattern_size[1],3), np.float32)
     objp[:,:2] = np.mgrid[0:pattern_size[0], 0:pattern_size[1]].T.reshape(-1,2)
     objp *= square_size
-    print(objp)
 
     _, rvec, tvec = cv2.solvePnP(objp, corners_corrected, mtx, dist)
     return rvec, tvec
