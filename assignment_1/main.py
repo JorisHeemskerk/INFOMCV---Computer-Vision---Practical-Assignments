@@ -43,11 +43,11 @@ def main()-> None:
     ####################################################################
     #
     # 1. All 20 correct + 5 manual images
-    # all_corners, img_shape = detect_corners(
-    #     "assignment_1/data/all/", 
-    #     output_folder,
-    #     PATTERN_SIZE
-    # )
+    all_corners, img_shape = detect_corners(
+        "assignment_1/data/all/", 
+        output_folder,
+        PATTERN_SIZE
+    )
     #
     # 2. Only 5 correct + 5 manual images
     # all_corners, img_shape = detect_corners(
@@ -64,8 +64,8 @@ def main()-> None:
     # )
     #
     # 4. Import the corners from the latest previous run.
-    all_corners = np.load(previous_run_data_dir + "corners_all_images.npy")
-    img_shape   = np.load(previous_run_data_dir + "img_shape.npy")
+    # all_corners = np.load(previous_run_data_dir + "corners_all_images.npy")
+    # img_shape   = np.load(previous_run_data_dir + "img_shape.npy")
     # 
     # 5. Import the corners from a manual directory.
     # previous_run_data_dir = "insert_path_here"
@@ -101,6 +101,37 @@ def main()-> None:
     #     True
     # )
 
+    
+    ####################################################################
+    #                          CHOICE TASK 5                           #
+    #  Enhance the input images before attempting to detect corners.   #
+    ####################################################################
+    # for i in [1, 2, 15, 18, 23]: 
+    #     print(f"Attempting to calibrate image {i}.")
+
+    #     img = cv2.imread(f"assignment_1/data/all/img_{i}.jpg")
+    #     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    #     _, adjusted_image = cv2.threshold(
+    #         gray,
+    #         200, # Threshold value of 200
+    #         255,
+    #         cv2.THRESH_BINARY_INV
+    #     )
+
+    #     # More exhaustive way to find chessboard corners, even though it
+    #     # is substantially slower.
+    #     success, _ = cv2.findChessboardCornersSB(
+    #         adjusted_image, 
+    #         PATTERN_SIZE, 
+    #         flags=cv2.CALIB_CB_EXHAUSTIVE | cv2.CALIB_CB_ACCURACY
+    #     )
+
+    #     if success:
+    #         print(f" - Calibration that failed before is now working!")
+    #     else:
+    #         print(f" - Calibration still does not work.")
+
     ####################################################################
     #                          CHOICE TASK 2                           #
     #  Iterative detection and rejection of low quality input images.  #
@@ -122,7 +153,9 @@ def main()-> None:
     # print(
     #     f"Calibration error with all images: {all_img_re_proj_err:.3f}\n"
     #     "Calibration error with only positively contributing images: "
-    #     f"{subset_img_re_proj_err:.3f}"
+    #     f"{subset_img_re_proj_err:.3f}\nA total of "
+    #     f"{len(image_validity_flags) - sum(image_validity_flags)} images "
+    #     f"have been removed.\n{image_validity_flags=}"
     # )
 
     ####################################################################
@@ -137,49 +170,6 @@ def main()-> None:
     #     PATTERN_SIZE,
     #     SQUARE_SIZE
     # )
-
-    ####################################################################
-    #                          CHOICE TASK 5                           #
-    #  Enhance the input images before attempting to detect corners.   #
-    ####################################################################
-    # img = cv2.imread("assignment_1/data/test.jpg")
-
-    # adjusted_image = cv2.detailEnhance(image, sigma_s=10, sigma_r=0.15)
-
-    # gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    # clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-    # adjusted_image = clahe.apply(gray)
-    # # adjusted_image = cv2.medianBlur(adjusted_image, 5)
-
-
-    # gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    # blur = cv2.GaussianBlur(gray, (0,0), 1.0)
-    # sharp = cv2.addWeighted(gray, 1.5, blur, -0.5, 0)
-
-    # scale = 2.0
-    # adjusted_image = cv2.resize(sharp, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
-
-    # gamma = 1.5  # try 0.5 - 2.5
-    # invGamma = 1.0 / gamma
-    # table = np.array([(i / 255.0) ** invGamma * 255
-    #                 for i in np.arange(256)]).astype("uint8")
-    # adjusted_image = cv2.LUT(adjusted_image, table)
-
-    # adjusted_image = cv2.GaussianBlur(adjusted_image, (5,5), 0)
-
-    # gray = cv2.cvtColor(adjusted_image, cv2.COLOR_BGR2GRAY)
-    # kernel = np.array([[0,-1,0],
-    #                 [-1,5,-1],
-    #                 [0,-1,0]])
-    # adjusted_image = cv2.filter2D(gray, -1, kernel)
-
-
-    
-
-
-    # detect_corners(img, output_folder="test_enhanced/")
-    # detect_corners("assignment_1/data/mix/img_23.jpg", output_folder="test_raw/")
 
     ####################################################################
     #                          CHOICE TASK 6                           #
