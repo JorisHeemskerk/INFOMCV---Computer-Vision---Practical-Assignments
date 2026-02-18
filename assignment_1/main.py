@@ -82,24 +82,25 @@ def main()-> None:
         PATTERN_SIZE, 
         SQUARE_SIZE
     )
+    print(f"{mtx = }")
 
     ####################################################################
     #           Display the axis and cube on the test image.           #
     ####################################################################
-    # display_axis_cube(
-    #     "assignment_1/data/test/img_25.jpg",
-    #     *get_rvec_tvec(
-    #         "assignment_1/data/test/img_25.jpg", 
-    #         mtx, 
-    #         dist, 
-    #         PATTERN_SIZE,
-    #         SQUARE_SIZE
-    #     ),
-    #     mtx,
-    #     dist,
-    #     "image",
-    #     True
-    # )
+    display_axis_cube(
+        "assignment_1/data/test/img_25.jpg",
+        *get_rvec_tvec(
+            "assignment_1/data/test/img_25.jpg", 
+            mtx, 
+            dist, 
+            PATTERN_SIZE,
+            SQUARE_SIZE
+        ),
+        mtx,
+        dist,
+        "image",
+        True
+    )
 
     
     ####################################################################
@@ -155,27 +156,27 @@ def main()-> None:
     #     "Calibration error with only positively contributing images: "
     #     f"{subset_img_re_proj_err:.3f}\nA total of "
     #     f"{len(image_validity_flags) - sum(image_validity_flags)} images "
-    #     f"have been removed.\n{image_validity_flags=}"
+    #     f"have been removed.\n{image_validity_flags=}\n{mtx = }"
     # )
 
     ####################################################################
     #                          CHOICE TASK 1                           #
     #          Display the axis and cube on the live webcam.           #
     ####################################################################
-    # display_axis_cube_video(
-    #     cv2.VideoCapture(0), 
-    #     mtx, 
-    #     dist, 
-    #     "video", 
-    #     PATTERN_SIZE,
-    #     SQUARE_SIZE
-    # )
+    display_axis_cube_video(
+        cv2.VideoCapture(0), 
+        mtx, 
+        dist, 
+        "video", 
+        PATTERN_SIZE,
+        SQUARE_SIZE
+    )
 
     ####################################################################
     #                          CHOICE TASK 6                           #
     #  3D plot the locations of the camera relative to the chessboard  #
     ####################################################################
-    plot_calibration_cameras(rvecs, tvecs)
+    # plot_calibration_cameras(rvecs, tvecs)
 
 if __name__ == "__main__":
     main()
