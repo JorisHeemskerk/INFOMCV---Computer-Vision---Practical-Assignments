@@ -26,16 +26,16 @@ def main()-> None:
         f"{datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S")}/"
 
     # Find and select the cached corners of the previous run if there.
-    previous_run_data_dir = "assignment_1/output/" + \
-        sorted(
-            [
-                filename for filename in os.listdir(
-                    "assignment_1/output/"
-                ) if filename[0] != "."
-            ], 
-            key=lambda s: int(re.search(r'\d+', s).group())
-        )[-1] + \
-        "/data/"
+    # previous_run_data_dir = "assignment_1/output/" + \
+    #     sorted(
+    #         [
+    #             filename for filename in os.listdir(
+    #                 "assignment_1/output/"
+    #             ) if filename[0] != "."
+    #         ], 
+    #         key=lambda s: int(re.search(r'\d+', s).group())
+    #     )[-1] + \
+    #     "/data/"
 
 
     ####################################################################
@@ -137,7 +137,7 @@ def main()-> None:
     #                          CHOICE TASK 2                           #
     #  Iterative detection and rejection of low quality input images.  #
     ####################################################################
-    # all_img_re_proj_err, _, _, _, _ = calibrate_camera(
+    # all_img_re_proj_err, _, _, rvecs, tvecs = calibrate_camera(
     #     all_corners, 
     #     img_shape, 
     #     PATTERN_SIZE, 
