@@ -7,7 +7,8 @@ from detect_corners import detect_corners, automatic_corner_detector
 def calibrate_camera(
     all_corners: list[list[tuple[float, float]]],
     img_shape: cv2.typing.MatLike,
-    pattern_size: cv2.typing.Size=[9,6]
+    pattern_size: cv2.typing.Size=[9,6],
+    square_size: float=0.024
 )-> tuple[
     float,
     cv2.typing.MatLike,
@@ -36,6 +37,7 @@ def calibrate_camera(
     # point, taking steps of 1 for each new intersection.
     objp = np.zeros((pattern_size[0]*pattern_size[1],3), np.float32)
     objp[:,:2] = np.mgrid[0:pattern_size[0], 0:pattern_size[1]].T.reshape(-1,2)
+    objp *= square_size
     real_points = [objp.copy() for _ in range(len(all_corners))]
 
     return cv2.calibrateCamera(
@@ -50,7 +52,8 @@ def get_rvec_tvec(
     source: str | cv2.typing.MatLike,
     mtx: cv2.typing.MatLike,
     dist: cv2.typing.MatLike,
-    pattern_size: cv2.typing.Size=[9,6]
+    pattern_size: cv2.typing.Size=[9,6],
+    square_size: float=0.024
 )-> tuple[cv2.typing.MatLike | None, cv2.typing.MatLike | None]:
     """
     Get the rotation and translation vectors form an image.
@@ -95,6 +98,8 @@ def get_rvec_tvec(
 
     objp = np.zeros((pattern_size[0]*pattern_size[1],3), np.float32)
     objp[:,:2] = np.mgrid[0:pattern_size[0], 0:pattern_size[1]].T.reshape(-1,2)
+    objp *= square_size
+    print(objp)
 
     _, rvec, tvec = cv2.solvePnP(objp, corners_corrected, mtx, dist)
     return rvec, tvec

@@ -8,6 +8,11 @@ from calibration import calibrate_camera, get_rvec_tvec
 from detect_corners import detect_corners
 from display_objects import display_axis_cube, display_axis_cube_video
 
+# Pattern size of chessboard
+PATTERN_SIZE = [9,6]
+# Length of a single square on chessboard (in meters)
+SQUARE_SIZE =0.024
+
 
 def main()-> None:
     # Create output folder name for the finished images.
@@ -34,19 +39,22 @@ def main()-> None:
     # 1. All 20 correct + 5 manual images
     # all_corners, img_shape = detect_corners(
     #     "assignment_1/data/all/", 
-    #     output_folder
+    #     output_folder,
+    #     PATTERN_SIZE
     # )
     #
     # 2. Only 5 correct + 5 manual images
     # all_corners, img_shape = detect_corners(
     #     "assignment_1/data/mix/", 
-    #     output_folder
+    #     output_folder,
+    #     PATTERN_SIZE
     # )
     #
     # 3. Only 5 correct (from 2)
     # all_corners, img_shape = detect_corners(
     #     "assignment_1/data/auto/", 
-    #     output_folder
+    #     output_folder,
+    #     PATTERN_SIZE
     # )
     #
     # 4. Import the corners from the latest previous run.
@@ -62,14 +70,25 @@ def main()-> None:
     ####################################################################
     #                      Calibrate the camera.                       #
     ####################################################################
-    ret, mtx, dist, rvecs, tvecs = calibrate_camera(all_corners, img_shape)
+    _, mtx, dist, _, _ = calibrate_camera(
+        all_corners, 
+        img_shape, 
+        PATTERN_SIZE, 
+        SQUARE_SIZE
+    )
 
     ####################################################################
     #           Display the axis and cube on the test image.           #
     ####################################################################
     # display_axis_cube(
     #     "assignment_1/data/test/img_25.jpg",
-    #     *get_rvec_tvec("assignment_1/data/test/img_25.jpg", mtx, dist),
+    #     *get_rvec_tvec(
+    #         "assignment_1/data/test/img_25.jpg", 
+    #         mtx, 
+    #         dist, 
+    #         PATTERN_SIZE,
+    #         SQUARE_SIZE
+    #     ),
     #     mtx,
     #     dist,
     #     "image",
@@ -80,7 +99,14 @@ def main()-> None:
     #                          CHOICE TASK 1                           #
     #          Display the axis and cube on the live webcam.           #
     ####################################################################
-    display_axis_cube_video(cv2.VideoCapture(0), mtx, dist, "video")
+    display_axis_cube_video(
+        cv2.VideoCapture(0), 
+        mtx, 
+        dist, 
+        "video", 
+        PATTERN_SIZE,
+        SQUARE_SIZE
+    )
 
     ####################################################################
     #                          CHOICE TASK 5                           #

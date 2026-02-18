@@ -9,7 +9,8 @@ def draw_axis(
     rvec: cv2.typing.MatLike,
     tvec: cv2.typing.MatLike,
     mtx: cv2.typing.MatLike,
-    dist: cv2.typing.MatLike
+    dist: cv2.typing.MatLike,
+    square_size: float=0.024
 )-> None:
     """
     TODO
@@ -19,7 +20,7 @@ def draw_axis(
         [3, 0, 0],
         [0, 3, 0],
         [0, 0, -3]
-    ], dtype=np.float32)
+    ], dtype=np.float32) * square_size
 
     points, _ = cv2.projectPoints(
         axis_points,
@@ -60,7 +61,7 @@ def draw_cube(
         [0, 2, -2],
         [2, 2, -2],
         [1, 1, -2]
-    ], dtype=np.float32)
+    ], dtype=np.float32) * square_size
 
     points, _ = cv2.projectPoints(
         cube_points,
@@ -96,8 +97,22 @@ def draw_cube(
         )
     
     rmat, _ = cv2.Rodrigues(rvec)
-    camera_position = np.dot(rmat, np.array([[1], [1], [2]])) + tvec
-    distance = np.linalg.norm(camera_position) * square_size
+    # R_t = np.column_stack((rmat, tvec))
+    # world_coords = np.array([
+    #     [square_size], 
+    #     [square_size], 
+    #     [2 * square_size], 
+    #     [1]
+    # ])
+    # camera_position = np.dot(R_t, world_coords)
+    
+    world_coords = np.array([
+        [square_size], 
+        [square_size], 
+        [2 * square_size]
+    ])
+    camera_position = tvec
+    distance = np.linalg.norm(camera_position)
 
     # Calculate the scale of the distance (between 0 and 4 meters),
     # subtract from 1, scale by 255, cap at minimum of 0.
@@ -112,10 +127,6 @@ def draw_cube(
             255
         )
     )
-
-    # print(rmat)
-    # print(rmat[0,0], rmat[1,0])
-    # print(h)
 
     hsv_color = np.uint8([[[h, 255, v]]])
     bgr_color = cv2.cvtColor(hsv_color, cv2.COLOR_HSV2BGR)[0][0]
@@ -147,7 +158,8 @@ def draw_axis_cube(
     rvec: cv2.typing.MatLike | None, 
     tvec: cv2.typing.MatLike | None, 
     mtx: cv2.typing.MatLike, 
-    dist: cv2.typing.MatLike
+    dist: cv2.typing.MatLike,
+    square_size: float=0.024
 )-> cv2.typing.MatLike:
     """
     Draw an axis and a cube on top of an image.
@@ -172,8 +184,8 @@ def draw_axis_cube(
 
     if rvec is None or tvec is None:
         return img
-    draw_axis(img, rvec, tvec, mtx, dist)
-    draw_cube(img, rvec, tvec, mtx, dist)
+    draw_axis(img, rvec, tvec, mtx, dist, square_size)
+    draw_cube(img, rvec, tvec, mtx, dist, square_size)
     return img
 
 def display_axis_cube(
@@ -183,7 +195,8 @@ def display_axis_cube(
     mtx: cv2.typing.MatLike, 
     dist: cv2.typing.MatLike,
     win_name: str,
-    wait: bool
+    wait: bool,
+    square_size: float=0.024
 )-> None:
     """
     Display an axis and a cube on top of an image.
@@ -206,7 +219,7 @@ def display_axis_cube(
     :return: The modified image
     :rtype: MatLike
     """
-    img = draw_axis_cube(source, rvec, tvec, mtx, dist)
+    img = draw_axis_cube(source, rvec, tvec, mtx, dist, square_size)
     cv2.imshow(win_name, img)
     if wait:
         cv2.waitKey(0)
@@ -217,6 +230,8 @@ def display_axis_cube_video(
     mtx: cv2.typing.MatLike, 
     dist: cv2.typing.MatLike,
     win_name: str,
+    pattern_size: cv2.typing.MatLike=[9,6],
+    square_size: float=0.024
 )-> None:
     """
     Display an axis and a cube on top of a VideoCapture object..
@@ -242,7 +257,7 @@ def display_axis_cube_video(
         _, frame = capture.read()
         display_axis_cube(
             frame, 
-            *get_rvec_tvec(frame, mtx, dist),
+            *get_rvec_tvec(frame, mtx, dist, pattern_size, square_size),
             mtx, 
             dist, 
             win_name, 
