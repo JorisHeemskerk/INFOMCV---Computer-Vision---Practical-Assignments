@@ -30,8 +30,11 @@ def calibrate_camera(
     :type all_corners: list[list[tuple[float, float]]]
     :param img_shape: Shape (x,y) of the original images in pixels.
     :type img_shape: cv2.typing.MatLike
-    :param pattern_size: The number of intersections on the chessboard.
-    :type pattern_size: cv2.typing.Size
+    :param pattern_size: The size of the chessboard (n_rows x n_columns)
+        counted as the number of inner corners.
+    :type pattern_size: Size
+    :param square_size: The length of a single chessboard square.
+    :type square_size: float
     :return: Ret, mtx, dist, rvecs, tvecs.
     :rtype: tuple[float, MatLike, MatLike, tuple[MatLike], tuple[MatLike]]
     """
@@ -70,13 +73,17 @@ def get_rvec_tvec(
 
     :param source: Path to input image or an actual input image
     :type source: str | cv2.typing.MatLike
-    :param mtx: Description
+    :param mtx: The camera intrinsics matrix
     :type mtx: cv2.typing.MatLike
-    :param dist: Description
+    :param dist: The distortion coefficients
     :type dist: cv2.typing.MatLike
-    :param pattern_size: Description
-    :type pattern_size: cv2.typing.Size
-    :return: Description
+    :param pattern_size: The size of the chessboard (n_rows x n_columns)
+        counted as the number of inner corners.
+    :type pattern_size: Size
+    :param square_size: The length of a single chessboard square.
+    :type square_size: float
+    :return: The rotation vector and translation vector of the input 
+        image
     :rtype: tuple[MatLike, MatLike]
     """
     if type(source) == str:

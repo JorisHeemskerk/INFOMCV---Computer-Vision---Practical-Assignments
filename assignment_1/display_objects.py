@@ -168,6 +168,8 @@ def draw_axis_cube(
     :type mtx: cv2.typing.MatLike
     :param dist: Distance matrix.
     :type dist: cv2.typing.MatLike
+    :param square_size: The length of a single chessboard square.
+    :type square_size: float
     :return: The modified image
     :rtype: MatLike
     """
@@ -210,6 +212,8 @@ def display_axis_cube(
     :type wait: If true, handle as stationary image, if false, 
         handle as video.
     :type wait: bool
+    :param square_size: The length of a single chessboard square.
+    :type square_size: float
     """
     img = draw_axis_cube(source, rvec, tvec, mtx, dist, square_size)
     cv2.imshow(win_name, img)
@@ -241,6 +245,11 @@ def display_axis_cube_video(
     :param win_name: Window name.
     :type win_name: str 
         handle as video.
+    :param pattern_size: The size of the chessboard (n_rows x n_columns)
+        counted as the number of inner corners.
+    :type pattern_size: Size
+    :param square_size: The length of a single chessboard square.
+    :type square_size: float
     """
     print("\nPress [esc] or [q] to close the window.")
     while True:
@@ -272,6 +281,8 @@ def plot_calibration_cameras(
     :param pattern_size: The size of the chessboard (n_rows x n_columns)
         counted as the number of inner corners.
     :type pattern_size: Size
+    :param square_size: The length of a single chessboard square.
+    :type square_size: float
     """    
     fig = plt.figure()
     ax = fig.add_subplot(projection='3d')
