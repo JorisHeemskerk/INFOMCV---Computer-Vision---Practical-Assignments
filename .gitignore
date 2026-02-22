@@ -208,9 +208,11 @@ __marimo__/
 
 # Custom
 ~$fomcv_assignment_1_report.docx
-data/*
+*/data/*
 output/*
 *.jpg
 *.jpeg
 *.png
 *.npy
+*.xml
+*.avi
