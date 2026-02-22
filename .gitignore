@@ -216,3 +216,4 @@ output/*
 *.npy
 *.xml
 *.avi
+*.mp4
