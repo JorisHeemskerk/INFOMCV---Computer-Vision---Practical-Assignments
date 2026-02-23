@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
 
+from tqdm import tqdm
+
 
 def stack_video_frames(
     source: str | cv2.VideoCapture,
@@ -137,11 +139,109 @@ def foreground_mask_to_video(
         outfile.write(foreground_grey[i])
     outfile.release()
 
+def optimise_thresholds(
+    stacked_video: cv2.typing.MatLike, 
+    means: np.ndarray, 
+    variances: np.ndarray,
+    threshold_search_space: tuple[float, float, int],
+    minimum_std: float=5.0,
+    component_pixel_size_punishment: int=20,
+    stride: int=1
+)-> tuple[float, float, float]:
+    """
+    Optimises thresholds using changes in erosion and dilation.
+
+    The core idea is that a perfect foreground-background subtraction
+    should be minimally affected by both erosion and dilation. In 
+    addition, there should also be as few floating shapes as possible
+    (i.e., random white pixels or random small black holes). Using
+    a grid-search we can try a multitude of different thresholds
+    and see how much they change under erosion, dilation & small shapes.
+    This way, the optimal thresholds are the ones that minimally change 
+    the mask or create small shapes. Both are weighed equally.
+
+    :param stacked_video: An entire video, stacked by frames on axis 0.
+        NOTE: Feed the video in black and white format.
+    :param stacked_video: cv2.typing.MatLike, 
+    :param means: Means for the fitted Gausians, same shape as 1 frame.
+    :type means: np.ndarray
+    :param variances: Variances for the fitted Gausians, same shape as 1
+        frame.
+    :param variances: np.ndarray
+    :param threshold_search_space: The input for a np.linspace. It 
+        equally divides the last digit number of steps between the first
+        two floats.
+    :param threshold_search_space: tuple[float, float, int]
+    :param minimum_std: Minimum standard deviation for masking.
+        (DEFAULT=5.0)
+    :param minimum_std: float
+    :param component_pixel_size_punishment: When a group of pixels is
+        smaller than this amount, it will be marked as negative and
+        negatively impact the score. (DEFAULT=20)
+    :param component_pixel_size_punishment: int
+    :param stride: Steps to take through the video, only looks at every
+        `stride` frames. (DEFAULT=1)
+    :param stride: int
+    :returns: The optimally found thresholds for Hue, Value, and 
+    Saturation, respectively.
+    :rtype: tuple[float, float, float]
+    """
+    h_thresholds = np.linspace(*threshold_search_space)
+    s_thresholds = np.linspace(*threshold_search_space)
+    v_thresholds = np.linspace(*threshold_search_space)
+
+    best_score = float("inf")
+    optimal_thresholds: tuple[float, float, float] = (.0, .0, .0)
+
+    for h in tqdm(h_thresholds, desc="Outer loop for hue thresholds"):
+        for s in s_thresholds:
+            for v in v_thresholds:
+                mask = create_foreground_mask(
+                    stacked_video[::stride], 
+                    means, 
+                    variances, 
+                    thresholds=(h, s, v),
+                    minimum_std=minimum_std
+                )
+                mask = mask.astype(np.uint8)
+                kernel = np.ones((3,3), np.uint8)
+                total_score = 0
+                for frame in mask:
+                    cleaned_frame = cv2.morphologyEx(
+                        frame, 
+                        cv2.MORPH_OPEN, 
+                        kernel
+                    )
+                    difference = np.abs(frame - cleaned_frame)
+                    
+                    # Count the number of connected white shapes of 
+                    # fewer than 20 pixels.
+                    _, labels = cv2.connectedComponents(frame)
+                    component_sizes = np.bincount(labels.flatten())
+                    n_small_components = np.sum(
+                        component_sizes < component_pixel_size_punishment
+                    )
+
+                    # Total += the normalised number of small components
+                    # + the normalised morphology difference.
+                    total_score += \
+                        (n_small_components / len(component_sizes)) + \
+                        np.mean(difference)
+                if total_score < best_score:
+                    best_score = total_score
+                    optimal_thresholds = (h, s, v)
+
+    return optimal_thresholds
+
 
 if __name__ == "__main__": # TODO: Move to main.py or something, idk.
     stacked_background_video = stack_video_frames(cv2.VideoCapture("assignment_2/data/cam1/background.avi"))
     stacked_foreground_video = stack_video_frames(cv2.VideoCapture("assignment_2/data/cam1/video.avi"))
     print(stacked_background_video.shape)
     means, variances = fit_gaussians(stacked_background_video)
-    mask = create_foreground_mask(stacked_foreground_video, means, variances, thresholds=[2, 3, 4])
+
+    # thresholds=[2, 3, 4]
+    thresholds = optimise_thresholds(stacked_foreground_video, means, variances, threshold_search_space=(5, 10.0, 16), stride=10)
+    print(thresholds)
+    mask = create_foreground_mask(stacked_foreground_video, means, variances, thresholds)
     foreground_mask_to_video("assignment_2/data/cam1/foreground_mask.avi", mask)
