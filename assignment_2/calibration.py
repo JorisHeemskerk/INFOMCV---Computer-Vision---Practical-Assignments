@@ -2,18 +2,22 @@ import cv2
 import os
 import numpy as np
 
-from detect_corners import detect_corners
+from detect_corners import \
+    detect_corners, \
+    automatic_corner_detector, \
+    manual_corner_selector
+from display_axis import draw_axis
 
 
 def calibration(
     source: str,
-    frames: int,
+    frames_num: int,
     pattern_size: cv2.typing.Size=[8,6],
     square_size: float=0.115
 )-> None:
     """
     Calibrate all cameras based on a set of corners from chessboards.
-    For all camera calibrations: save or overwrite the `calibration.xml`
+    For all camera calibrations: save or overwrite the `intrinsics.xml`
     file in the corresponding folder.
 
     Part of the xml saving code was inspired by:
@@ -23,9 +27,9 @@ def calibration(
         replaced by the id of the camera. These folders contain an
         intrinsics.avi file.
     :type source: str
-    :param frames: The amount of frames used for the calibration of
+    :param frames_num: The amount of frames used for the calibration of
         each camera.
-    :type frames: int
+    :type frames_num: int
     :param pattern_size: The size of the chessboard (n_rows x n_columns)
         counted as the number of inner corners.
     :type pattern_size: Size
@@ -152,3 +156,161 @@ def calibrate_camera(
         None,
         None
     )
+
+
+def get_rvec_tvec(
+    source: str | cv2.typing.MatLike,
+    mtx: cv2.typing.MatLike,
+    dist: cv2.typing.MatLike,
+    pattern_size: cv2.typing.Size=[8,6],
+    square_size: float=0.024
+)-> tuple[cv2.typing.MatLike | None, cv2.typing.MatLike | None]:
+    """
+    Get the rotation and translation vectors form an image.
+
+    Calculate the rotation and translation vectors from an image using
+    the calibrated matrix and distances. This function detects the
+    chessboard corners in an image and calculates the vectors. If the
+    provided image comes from a file, the user may be prompted to 
+    manually detect the corners. If an already loaded image is passed,
+    and no corners can automatically be detected, the function will
+    return two None vectors.
+
+    :param source: Path to input image or an actual input image
+    :type source: str | cv2.typing.MatLike
+    :param mtx: The camera intrinsics matrix
+    :type mtx: cv2.typing.MatLike
+    :param dist: The distortion coefficients
+    :type dist: cv2.typing.MatLike
+    :param pattern_size: The size of the chessboard (n_rows x n_columns)
+        counted as the number of inner corners.
+    :type pattern_size: Size
+    :param square_size: The length of a single chessboard square.
+    :type square_size: float
+    :return: The rotation vector and translation vector of the input 
+        image
+    :rtype: tuple[MatLike, MatLike]
+    """
+    if type(source) == str:
+        img = cv2.imread(source, 1)
+        corners, _ = detect_corners(source, None, pattern_size)
+        # Extract the first and only corners element.
+        corners = corners[0]
+    else:
+        img = source.copy()
+        success, corners, _ = automatic_corner_detector(img, pattern_size)
+        # if success == 0:
+        #     print("Couldn't find corners")
+        #     return None, None
+        while success == 0:
+            print(
+                f"Corners were not automatically or fully manually detected in"
+                f" image {source if type(source) == str else ''}.\nPlease "
+                "manually click on the four corners and then close the image."
+            )
+            success, corners, img = manual_corner_selector(
+                source, 
+                pattern_size
+            )
+
+    corners_corrected = cv2.cornerSubPix(
+        cv2.cvtColor(img, cv2.COLOR_BGR2GRAY),
+        corners,
+        (11,11),
+        (-1,-1), # No dead region.
+        (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+    )
+    test_img = source.copy()
+    cv2.imshow('test1', test_img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    # res_img = cv2.drawChessboardCorners(img.copy(), pattern_size, corners, True)
+    # cv2.imshow('chessboard', res_img)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+    # cv2.imshow('test', test_img)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+    test_img = cv2.drawChessboardCorners(test_img, pattern_size, corners_corrected, True)
+    cv2.imshow('test2', test_img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    corners_corrected = corners
+
+    objp = np.zeros((pattern_size[0]*pattern_size[1],3), np.float32)
+    objp[:,:2] = np.mgrid[0:pattern_size[0], 0:pattern_size[1]].T.reshape(-1,2)
+    objp *= square_size
+
+    print(f"{objp.shape = }")
+    print(f"{objp = }")
+    print(f"{corners_corrected = }")
+
+    _, rvec, tvec = cv2.solvePnP(objp, corners_corrected, mtx, dist, flags=cv2.SOLVEPNP_ITERATIVE)
+    return rvec, tvec
+
+
+def extrinsics(
+    source: str,
+    pattern_size: cv2.typing.Size=[8,6],
+    square_size: float=0.115
+)-> None:
+    """
+    Calculate the extrinsics of all cameras.
+
+    For all cameras: save the camera extrinsics and intrinsics or
+    overwrite the `config.xml` file in the corresponding folder.
+
+    :param source: Folder containing 'camX' folders where 'X' is
+        replaced by the id of the camera. These folders contain an
+        intrinsics.avi file.
+    :type source: str
+    :param pattern_size: The size of the chessboard (n_rows x n_columns)
+        counted as the number of inner corners.
+    :type pattern_size: Size
+    :param square_size: The length of a single chessboard square.
+    :type square_size: float
+    """
+    cameras = [
+        source + folder for folder in os.listdir(source) \
+            if os.path.isdir(source + folder)
+    ]
+
+    for camera in cameras:
+        # Get all frames in video
+        frames = stack_video_frames(
+            camera + "/checkerboard.avi",
+            None
+        )
+
+        # Get camera intrinsics
+        intrinsics = cv2.FileStorage(
+            camera + "/intrinsics.xml",
+            cv2.FileStorage_READ
+        )
+        mtx = intrinsics.getNode("CameraMatrix").mat()
+        dist = intrinsics.getNode("DistortionCoeffs").mat()
+
+        rvec, tvec = get_rvec_tvec(
+            frames[0],
+            mtx,
+            dist,
+            pattern_size,
+            square_size
+        )
+        print(f"{rvec = }")
+        print(f"{tvec = }")
+
+        draw_axis(
+            frames[0],
+            rvec,
+            tvec,
+            mtx,
+            dist,
+            square_size
+        )
+
+        cv2.imshow("window", frames[0])
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        
+        exit()

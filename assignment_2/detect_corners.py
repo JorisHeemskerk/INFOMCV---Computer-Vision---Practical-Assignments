@@ -62,7 +62,7 @@ def detect_corners(
 
 def automatic_corner_detector(
     source: str | cv2.typing.MatLike, 
-    pattern_size: cv2.typing.Size=[9,6]
+    pattern_size: cv2.typing.Size=[8,6]
 )-> tuple[bool, cv2.typing.MatLike, cv2.typing.MatLike]:
     """
     Automatically tries to detect corners on a chess board.
@@ -95,7 +95,7 @@ def automatic_corner_detector(
 
 def manual_corner_selector(
     source: str | cv2.typing.MatLike, 
-    pattern_size: cv2.typing.Size=[9,6]
+    pattern_size: cv2.typing.Size=[8,6]
 )-> tuple[bool, cv2.typing.MatLike, cv2.typing.MatLike]:
     """
     Manually tries to find the corners on a chess board. The user needs
@@ -167,15 +167,41 @@ def manual_corner_selector(
     else:
         img = source.copy()
         zoom = source.copy()
-    cv2.imshow('image', img)
-    cv2.setMouseCallback('image', click_event)
+    # cv2.imshow('image', img)
+    # cv2.setMouseCallback('image', click_event)
 
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()    
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+    image_corners = [(357, 301), (429, 321), (314, 317), (388, 340)]
+    
 
     if len(image_corners)==4:
         corners = find_corners(image_corners, pattern_size)
-        res_img = cv2.drawChessboardCorners(zoom, pattern_size, corners, True)
+        # res_img = cv2.drawChessboardCorners(zoom, pattern_size, corners, True)
+        res_img = zoom
+
+        # cv2.line(img, (image_corners[0]), (image_corners[1]), (0, 255, 0), thickness=3, lineType=8)
+        # cv2.line(img, (image_corners[0]), (image_corners[2]), (0, 255, 0), thickness=3, lineType=8)
+        # cv2.line(img, (image_corners[2]), (image_corners[3]), (0, 255, 0), thickness=3, lineType=8)
+        # cv2.line(img, (image_corners[1]), (image_corners[3]), (0, 255, 0), thickness=3, lineType=8)
+        for i, corner in enumerate(corners):
+            try:
+                x = (int(corner[0]), int(corner[1]))
+            except IndexError:
+                print(corner)
+            if i < 8:
+                cv2.circle(img, x, 0, (255, 0, 0))
+                print(i)
+            else:
+                cv2.circle(img, x, 0, (0, 0, 255))
+
+        cv2.imshow('img', img)
+        cv2.waitKey(0)
+        res_img = cv2.drawChessboardCorners(img, pattern_size, corners, True)
+        cv2.imshow("res_img", res_img)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        # exit()
         return 1, corners, res_img
     else:
         print("The correct amount of corners `4` was not provided")
@@ -183,7 +209,7 @@ def manual_corner_selector(
 
 def find_corners(
     image_corners: list[tuple[int, int]],
-    pattern_size: cv2.typing.Size=[9,6]
+    pattern_size: cv2.typing.Size=[8,6]
 )-> cv2.typing.MatLike:
     """
     Finds the corners on a chess board given the outer image corners of
@@ -207,12 +233,13 @@ def find_corners(
     :return: The corners that were found.
     :rtype: MatLike
     """
-    corners_sorted = sorted(image_corners, key=lambda x: x[1], reverse=True)
+    # corners_sorted = sorted(image_corners, key=lambda x: x[1], reverse=True)
 
-    top = sorted(corners_sorted[:2], key=lambda x: x[0], reverse=True)
-    bottom = sorted(corners_sorted[2:], key=lambda x: x[0], reverse=True)
+    # top = sorted(corners_sorted[:2], key=lambda x: x[0], reverse=True)
+    # bottom = sorted(corners_sorted[2:], key=lambda x: x[0], reverse=True)
     
-    image_corners = top + bottom
+    # image_corners = top + bottom
+    print(f"{image_corners}")
 
     upper_corners = np.linspace(
         image_corners[0],
@@ -238,7 +265,7 @@ def find_corners(
     corners = []
     for left, right in zip(left_corners, right_corners):
         for upper, lower in zip(lower_corners, upper_corners):
-            corners.append([
+            corners.append((
                 line_intersect(
                     upper[0],
                     upper[1],
@@ -249,7 +276,7 @@ def find_corners(
                     right[0],
                     right[1]
                 )
-            ])
+            ))
     return np.asarray(corners, dtype=np.float32)
 
 

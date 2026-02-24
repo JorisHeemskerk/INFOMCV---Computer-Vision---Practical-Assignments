@@ -1,6 +1,6 @@
 import cv2
 
-from calibration import calibration
+from calibration import calibration, extrinsics
 
 
 # Load info of chessboard
@@ -23,9 +23,18 @@ def main()-> None:
     ####################################################################
     #                      Calibrate the cameras.                      #
     ####################################################################
-    calibration(
+    # calibration(
+    #     "assignment_2/data/",
+    #     1,
+    #     PATTERN_SIZE,
+    #     SQUARE_SIZE
+    # )
+
+    ####################################################################
+    #                   Calculate camera extrinsics.                   #
+    ####################################################################
+    extrinsics(
         "assignment_2/data/",
-        1,
         PATTERN_SIZE,
         SQUARE_SIZE
     )
