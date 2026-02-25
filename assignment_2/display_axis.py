@@ -9,7 +9,7 @@ def draw_axis(
     tvec: cv2.typing.MatLike,
     mtx: cv2.typing.MatLike,
     dist: cv2.typing.MatLike,
-    square_size: float=0.024
+    square_size: float
 )-> None:
     """
     Draw X, Y and Z axis on top of the chessboard from the corner that

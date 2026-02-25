@@ -12,8 +12,8 @@ from display_axis import draw_axis
 def calibration(
     source: str,
     frames_num: int,
-    pattern_size: cv2.typing.Size=[8,6],
-    square_size: float=0.115
+    pattern_size: cv2.typing.Size,
+    square_size: float
 )-> None:
     """
     Calibrate all cameras based on a set of corners from chessboards.
@@ -48,8 +48,9 @@ def calibration(
         # all_corners, img_shape = detect_corners([frames[0]], pattern_size)
         stride = np.array(range(0, frames.shape[0], 50))
         all_corners, img_shape = detect_corners(frames[stride], pattern_size)
+        
         # Calibrate the camera
-        ret, mtx, dist, _, _ = calibrate_camera(
+        _, mtx, dist, _, _ = calibrate_camera(
             all_corners, 
             img_shape, 
             pattern_size, 
@@ -60,15 +61,14 @@ def calibration(
             camera.replace(".avi", ".xml"),
             cv2.FILE_STORAGE_WRITE
         )
+        # Convert to float32 as per template
+        mtx = mtx.astype(np.float32)
+        dist = dist.astype(np.float32)
+        
         xml.write("CameraMatrix", mtx)
         xml.write("DistortionCoeffs", dist)
 
         xml.release()
-
-        print(camera)
-        print(f"{ret = }")
-        print(f"{mtx = }")
-        print(f"{dist = }")
 
 
 def stack_video_frames(
@@ -113,8 +113,8 @@ def stack_video_frames(
 def calibrate_camera(
     all_corners: list[list[tuple[float, float]]],
     img_shape: cv2.typing.MatLike,
-    pattern_size: cv2.typing.Size=[9,6],
-    square_size: float=0.024
+    pattern_size: cv2.typing.Size,
+    square_size: float
 )-> tuple[
     float,
     cv2.typing.MatLike,
@@ -162,8 +162,8 @@ def get_rvec_tvec(
     source: str | cv2.typing.MatLike,
     mtx: cv2.typing.MatLike,
     dist: cv2.typing.MatLike,
-    pattern_size: cv2.typing.Size=[8,6],
-    square_size: float=0.024
+    pattern_size: cv2.typing.Size,
+    square_size: float
 )-> tuple[cv2.typing.MatLike | None, cv2.typing.MatLike | None]:
     """
     Get the rotation and translation vectors form an image.
@@ -213,46 +213,18 @@ def get_rvec_tvec(
                 pattern_size
             )
 
-    corners_corrected = cv2.cornerSubPix(
-        cv2.cvtColor(img, cv2.COLOR_BGR2GRAY),
-        corners,
-        (11,11),
-        (-1,-1), # No dead region.
-        (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-    )
-    test_img = source.copy()
-    cv2.imshow('test1', test_img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-    # res_img = cv2.drawChessboardCorners(img.copy(), pattern_size, corners, True)
-    # cv2.imshow('chessboard', res_img)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
-    # cv2.imshow('test', test_img)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
-    test_img = cv2.drawChessboardCorners(test_img, pattern_size, corners_corrected, True)
-    cv2.imshow('test2', test_img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-    corners_corrected = corners
-
     objp = np.zeros((pattern_size[0]*pattern_size[1],3), np.float32)
     objp[:,:2] = np.mgrid[0:pattern_size[0], 0:pattern_size[1]].T.reshape(-1,2)
     objp *= square_size
 
-    print(f"{objp.shape = }")
-    print(f"{objp = }")
-    print(f"{corners_corrected = }")
-
-    _, rvec, tvec = cv2.solvePnP(objp, corners_corrected, mtx, dist, flags=cv2.SOLVEPNP_ITERATIVE)
+    _, rvec, tvec = cv2.solvePnP(objp, corners, mtx, dist)
     return rvec, tvec
 
 
 def extrinsics(
     source: str,
-    pattern_size: cv2.typing.Size=[8,6],
-    square_size: float=0.115
+    pattern_size: cv2.typing.Size,
+    square_size: float
 )-> None:
     """
     Calculate the extrinsics of all cameras.
@@ -297,8 +269,8 @@ def extrinsics(
             pattern_size,
             square_size
         )
-        print(f"{rvec = }")
-        print(f"{tvec = }")
+        rvec = rvec.astype(np.float32)
+        tvec = tvec.astype(np.float32)
 
         draw_axis(
             frames[0],
@@ -312,5 +284,17 @@ def extrinsics(
         cv2.imshow("window", frames[0])
         cv2.waitKey(0)
         cv2.destroyAllWindows()
+
+        xml = cv2.FileStorage(
+            camera + "/config.xml",
+            cv2.FILE_STORAGE_WRITE
+        )
+        
+        xml.write("CameraMatrix", mtx)
+        xml.write("DistortionCoeffs", dist)
+        xml.write("RotationVec", rvec)
+        xml.write("TranslationVec", tvec)
+
+        xml.release()
         
         exit()
