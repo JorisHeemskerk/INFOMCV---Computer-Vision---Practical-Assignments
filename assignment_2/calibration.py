@@ -48,6 +48,8 @@ def calibration(
         # all_corners, img_shape = detect_corners([frames[0]], pattern_size)
         stride = np.array(range(0, frames.shape[0], 50))
         all_corners, img_shape = detect_corners(frames[stride], pattern_size)
+
+        print(f"{camera}: {len(all_corners)}/{len(frames[stride])}")
         
         # Calibrate the camera
         _, mtx, dist, _, _ = calibrate_camera(
@@ -159,29 +161,30 @@ def calibrate_camera(
 
 
 def get_rvec_tvec(
-    source: str | cv2.typing.MatLike,
+    source: cv2.typing.MatLike,
     mtx: cv2.typing.MatLike,
     dist: cv2.typing.MatLike,
     pattern_size: cv2.typing.Size,
     square_size: float
 )-> tuple[cv2.typing.MatLike | None, cv2.typing.MatLike | None]:
     """
-    Get the rotation and translation vectors form an image.
+    Get the rotation and translation vectors from an image.
 
     Calculate the rotation and translation vectors from an image using
-    the calibrated matrix and distances. This function detects the
-    chessboard corners in an image and calculates the vectors. If the
-    provided image comes from a file, the user may be prompted to 
-    manually detect the corners. If an already loaded image is passed,
-    and no corners can automatically be detected, the function will
-    return two None vectors.
+    the calibrated matrix and distortion coefficients. This function
+    asks you to click on four corners of a chessboard. To use this
+    function for multiple camera detects the user will need to click on
+    the same corners in the same order in terms of their world location.
+    The corners that need to be clicked are the top left, top right,
+    bottom left and bottom right inner corners of the chessboard.
+    Clicking in this order is important for the function to work.
 
     :param source: Path to input image or an actual input image
-    :type source: str | cv2.typing.MatLike
+    :type source: MatLike
     :param mtx: The camera intrinsics matrix
-    :type mtx: cv2.typing.MatLike
+    :type mtx: MatLike
     :param dist: The distortion coefficients
-    :type dist: cv2.typing.MatLike
+    :type dist: MatLike
     :param pattern_size: The size of the chessboard (n_rows x n_columns)
         counted as the number of inner corners.
     :type pattern_size: Size
@@ -191,27 +194,24 @@ def get_rvec_tvec(
         image
     :rtype: tuple[MatLike, MatLike]
     """
-    if type(source) == str:
-        img = cv2.imread(source, 1)
-        corners, _ = detect_corners(source, None, pattern_size)
-        # Extract the first and only corners element.
-        corners = corners[0]
-    else:
-        img = source.copy()
-        success, corners, _ = automatic_corner_detector(img, pattern_size)
-        # if success == 0:
-        #     print("Couldn't find corners")
-        #     return None, None
-        while success == 0:
-            print(
-                f"Corners were not automatically or fully manually detected in"
-                f" image {source if type(source) == str else ''}.\nPlease "
-                "manually click on the four corners and then close the image."
-            )
-            success, corners, img = manual_corner_selector(
-                source, 
-                pattern_size
-            )
+    success = 0
+    while success == 0:
+        print(
+            "Corners need to be manually selected.\nPlease choose which inner " 
+            "corner of the chessboard is the top left, the top right, the"
+            "bottom left and the bottom right corner.\n The top and bottom of "
+            "the chessboard are the longer sides.\nRemember the order of the "
+            "corners in terms of in world location.\nEx: choose the corner "
+            "That's furthest away from the carpet seam as the top left corner."
+            "\nThen click on the corners in the given order and remember to "
+            "do so for all other angles you'll see of the chessboard where "
+            "you'll be asked to click on this chessboard again.\nAfter "
+            "clicking on the four corners, you can close the image."
+        )
+        success, corners, _ = manual_corner_selector(
+            source, 
+            pattern_size
+        )
 
     objp = np.zeros((pattern_size[0]*pattern_size[1],3), np.float32)
     objp[:,:2] = np.mgrid[0:pattern_size[0], 0:pattern_size[1]].T.reshape(-1,2)
@@ -281,7 +281,7 @@ def extrinsics(
             square_size
         )
 
-        cv2.imshow("window", frames[0])
+        cv2.imshow("axis", frames[0])
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
@@ -296,5 +296,4 @@ def extrinsics(
         xml.write("TranslationVec", tvec)
 
         xml.release()
-        
-        exit()
+

@@ -36,16 +36,21 @@ def detect_corners(
             source, 
             pattern_size
         )
-        # while success == 0:
-        #     print(
-        #         f"Corners were not automatically or fully manually detected in"
-        #         f" image {source if type(source) == str else ''}.\nPlease "
-        #         "manually click on the four corners and then close the image."
-        #     )
-        #     success, corners, img = manual_corner_selector(
-        #         source, 
-        #         pattern_size
-        #     )
+        if success == 0:
+            _, adjusted_image = cv2.threshold(
+                source,
+                200, # Threshold value of 200
+                255,
+                cv2.THRESH_BINARY_INV
+            )
+            success_retry, _ = cv2.findChessboardCornersSB(
+                adjusted_image, 
+                pattern_size, 
+                flags=cv2.CALIB_CB_EXHAUSTIVE | cv2.CALIB_CB_ACCURACY
+            )
+            if success_retry:
+                print("1 more")
+        
         if success:
             # Correct corners by looking at surrounding pixels.
             corners_corrected = cv2.cornerSubPix(
@@ -168,7 +173,7 @@ def manual_corner_selector(
         img = source.copy()
         zoom = source.copy()
     
-    image_corners = [(357, 301), (429, 321), (314, 317), (388, 340)]
+    # image_corners = [(357, 301), (429, 321), (314, 317), (388, 340)]
 
     cv2.imshow('image', img)
     cv2.setMouseCallback('image', click_event)
