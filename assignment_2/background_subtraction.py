@@ -1,8 +1,22 @@
 import cv2
 import numpy as np
+import itertools
+import joblib
 
+from dataclasses import dataclass
 from tqdm import tqdm
 
+CAMERA = "cam4"
+
+
+@dataclass
+class Thresholds:
+    h_top: float
+    h_bot: float
+    s_top: float
+    s_bot: float
+    v_top: float
+    v_bot: float
 
 def stack_video_frames(
     source: str | cv2.VideoCapture,
@@ -60,19 +74,20 @@ def create_foreground_mask(
     stacked_video: cv2.typing.MatLike, 
     means: np.ndarray, 
     variances: np.ndarray,
-    thresholds: tuple[float, float, float],
+    thresholds: Thresholds,
     minimum_std: float=5.0
 )-> np.ndarray:
     """
     Apply the fitted Gaussians to the foreground to create a mask.
 
     For each frame in the stacked foreground video, compare each pixel
-    with the mean. If this value is greater than `k` times the standard-
-    deviation, this pixel is considered changed. `k` here stands for the
-    specific threshold for the given colour channel. If one of the
-    pixels in one of the colour channels is considered foreground, this
-    will be seen as true for the entire image. In the output, each `on` 
-    pixel is considered foreground and each `off` pixel is background.
+    with the mean. If this value is greater/smaller than `k` times the 
+    standard deviation, this pixel is considered changed. `k` here 
+    stands for the specific threshold for the given colour channel. If 
+    one of the pixels in one of the colour channels is considered 
+    foreground, this will be seen as true for the entire image. In the 
+    output, each `on` pixel is considered foreground and each `off` 
+    pixel is background.
     
     :param stacked_video: The entire video, stacked by frames on axis 0.
         NOTE: Feed the video in HSV format.
@@ -82,9 +97,10 @@ def create_foreground_mask(
     :param variances: Variances for the fitted Gausians, same shape as 1
         frame.
     :type variances: np.ndarray
-    :param thresholds: List of 3 threshold values for Hue, Value & 
-        Saturation, respectively.
-    :type thresholds: tuple[float, float, float]
+    :param thresholds: Thresholds object containing 6 values for Hue, 
+        Value & Saturation, respectively, containing 2 of each 
+        (top & bottom).
+    :type thresholds: Thresholds
     :param minimum_std: When the standard deviation becomes too small,
         it results in tiny changes being considered as foreground. This
         minimum combats this behavior. (DEFAULT=5.0)
@@ -97,19 +113,44 @@ def create_foreground_mask(
     assert stacked_video.shape[2] == means.shape[1] == variances.shape[1], \
         "Widths of video, means and variances do not match"
     
-    # Convert to float32 to prevent uint8 overflow...
+    # Convert to float32 to prevent uint8 overflow.
     stacked_video = stacked_video.astype(np.float32)
     means = means.astype(np.float32)
 
-    difference = np.abs(stacked_video - means)
     stds = np.sqrt(variances)
     # Set the minimum STD to `minimum_std`, to prevent very very minor 
     # fluctuations from being seen as foreground.
     stds = np.maximum(stds, minimum_std) 
-    foreground_channels = difference > stds * np.array(thresholds)
+
+    H = stacked_video[..., 0]
+    S = stacked_video[..., 1]
+    V = stacked_video[..., 2]
+
+    mean_H = means[..., 0]
+    mean_S = means[..., 1]
+    mean_V = means[..., 2]
+
+    std_H = stds[..., 0]
+    std_S = stds[..., 1]
+    std_V = stds[..., 2]
+
+    h_foreground = (
+        (H > mean_H + thresholds.h_top * std_H) |
+        (H < mean_H - thresholds.h_bot * std_H)
+    )
+
+    s_foreground = (
+        (S > mean_S + thresholds.s_top * std_S) |
+        (S < mean_S - thresholds.s_bot * std_S)
+    )
+
+    v_foreground = (
+        (V > mean_V + thresholds.v_top * std_V) |
+        (V < mean_V - thresholds.v_bot * std_V)
+    )
 
     # If one of the channels detects a foreground, all of them do.
-    return np.any(foreground_channels, axis=3)
+    return h_foreground | s_foreground | v_foreground
 
 def foreground_mask_to_video(
     destination: str, 
@@ -147,7 +188,7 @@ def optimise_thresholds(
     minimum_std: float=5.0,
     component_pixel_size_punishment: int=20,
     stride: int=1
-)-> tuple[float, float, float]:
+)-> Thresholds:
     """
     Optimises thresholds using changes in erosion and dilation.
 
@@ -182,66 +223,113 @@ def optimise_thresholds(
     :param stride: Steps to take through the video, only looks at every
         `stride` frames. (DEFAULT=1)
     :param stride: int
-    :returns: The optimally found thresholds for Hue, Value, and 
-    Saturation, respectively.
-    :rtype: tuple[float, float, float]
+    :returns: The optimally found top and bottom thresholds for Hue, 
+        Value, and Saturation, respectively.
+    :rtype: Thresholds
     """
-    h_thresholds = np.linspace(*threshold_search_space)
-    s_thresholds = np.linspace(*threshold_search_space)
-    v_thresholds = np.linspace(*threshold_search_space)
+    def validate_thresholds(thresholds: Thresholds)-> float:
+        mask = create_foreground_mask(
+            stacked_video[::stride], 
+            means, 
+            variances, 
+            thresholds=thresholds,
+            minimum_std=minimum_std
+        )
+        mask = mask.astype(np.uint8)
+        kernel = np.ones((3,3), np.uint8)
+        total_score = 0
+        for frame in mask:
+            cleaned_frame = cv2.morphologyEx(
+                frame, 
+                cv2.MORPH_OPEN, 
+                kernel
+            )
+            difference = np.abs(frame - cleaned_frame)
+            
+            # Count the number of connected white shapes of 
+            # fewer than 20 pixels.
+            _, labels = cv2.connectedComponents(frame)
+            component_sizes = np.bincount(labels.flatten())
+            n_small_components = np.sum(
+                component_sizes < component_pixel_size_punishment
+            )
 
-    best_score = float("inf")
-    optimal_thresholds: tuple[float, float, float] = (.0, .0, .0)
+            # Total += the normalised number of small components
+            # + the normalised morphology difference.
+            total_score += \
+                (n_small_components / len(component_sizes)) + \
+                np.mean(difference)
+        return total_score 
 
-    for h in tqdm(h_thresholds, desc="Outer loop for hue thresholds"):
-        for s in s_thresholds:
-            for v in v_thresholds:
-                mask = create_foreground_mask(
-                    stacked_video[::stride], 
-                    means, 
-                    variances, 
-                    thresholds=(h, s, v),
-                    minimum_std=minimum_std
-                )
-                mask = mask.astype(np.uint8)
-                kernel = np.ones((3,3), np.uint8)
-                total_score = 0
-                for frame in mask:
-                    cleaned_frame = cv2.morphologyEx(
-                        frame, 
-                        cv2.MORPH_OPEN, 
-                        kernel
-                    )
-                    difference = np.abs(frame - cleaned_frame)
-                    
-                    # Count the number of connected white shapes of 
-                    # fewer than 20 pixels.
-                    _, labels = cv2.connectedComponents(frame)
-                    component_sizes = np.bincount(labels.flatten())
-                    n_small_components = np.sum(
-                        component_sizes < component_pixel_size_punishment
-                    )
+    threshold_space = np.linspace(*threshold_search_space)
+    possible_thresholds = itertools.product(threshold_space, repeat=6)
+    print(
+        f"There will be {len(threshold_space) ** 6:,} "
+        "combinations validated..."
+    )
 
-                    # Total += the normalised number of small components
-                    # + the normalised morphology difference.
-                    total_score += \
-                        (n_small_components / len(component_sizes)) + \
-                        np.mean(difference)
-                if total_score < best_score:
-                    best_score = total_score
-                    optimal_thresholds = (h, s, v)
-
-    return optimal_thresholds
-
+    scores = joblib.Parallel(n_jobs=-1, backend="loky")(
+        joblib.delayed(validate_thresholds)(Thresholds(*thresholds)) 
+        for thresholds in tqdm(
+            possible_thresholds, 
+            total=len(threshold_space) ** 6
+        )
+    )
+    scores = np.array(scores)
+    # Cache all the scores.
+    np.save(f"scores_{CAMERA}.npy", scores)
+    
+    # Create all combinations again, because the yield object is empty.
+    possible_thresholds = itertools.product(threshold_space, repeat=6)
+    best_thresholds = next(
+        itertools.islice(possible_thresholds, np.argmin(scores), None)
+    )
+    best_thresholds = Thresholds(*best_thresholds)
+    return best_thresholds
 
 if __name__ == "__main__": # TODO: Move to main.py or something, idk.
-    stacked_background_video = stack_video_frames(cv2.VideoCapture("assignment_2/data/cam1/background.avi"))
-    stacked_foreground_video = stack_video_frames(cv2.VideoCapture("assignment_2/data/cam1/video.avi"))
+    stacked_background_video = stack_video_frames(cv2.VideoCapture(f"assignment_2/data/{CAMERA}/background.avi"))
+    stacked_foreground_video = stack_video_frames(cv2.VideoCapture(f"assignment_2/data/{CAMERA}/video.avi"))
     print(stacked_background_video.shape)
     means, variances = fit_gaussians(stacked_background_video)
 
-    # thresholds=[2, 3, 4]
-    thresholds = optimise_thresholds(stacked_foreground_video, means, variances, threshold_search_space=(5, 10.0, 16), stride=10)
+    # cam 1
+    # thresholds = Thresholds(
+    #     h_top=np.float64(5.928571428571429), 
+    #     h_bot=np.float64(10.0), 
+    #     s_top=np.float64(8.642857142857142), 
+    #     s_bot=np.float64(7.2857142857142865), 
+    #     v_top=np.float64(7.2857142857142865), 
+    #     v_bot=np.float64(10.0)
+    # )
+    # cam 2
+    # thresholds = Thresholds(
+    #     h_top=np.float64(10.0), 
+    #     h_bot=np.float64(10.0), 
+    #     s_top=np.float64(10.0), 
+    #     s_bot=np.float64(4.571428571428571), 
+    #     v_top=np.float64(10.0), 
+    #     v_bot=np.float64(4.571428571428571)
+    # )
+    # cam 3
+    # thresholds = Thresholds(
+    #     h_top=np.float64(10.0), 
+    #     h_bot=np.float64(10.0), 
+    #     s_top=np.float64(10.0), 
+    #     s_bot=np.float64(10.0), 
+    #     v_top=np.float64(10.0), 
+    #     v_bot=np.float64(10.0)
+    # )
+    # cam 4
+    # thresholds = Thresholds(
+    #     h_top=np.float64(8.642857142857142), 
+    #     h_bot=np.float64(8.642857142857142), 
+    #     s_top=np.float64(8.642857142857142), 
+    #     s_bot=np.float64(8.642857142857142), 
+    #     v_top=np.float64(5.928571428571429), 
+    #     v_bot=np.float64(10.0)
+    # )
+    thresholds = optimise_thresholds(stacked_foreground_video, means, variances, threshold_search_space=(0.5, 10.0, 8), stride=20)
     print(thresholds)
     mask = create_foreground_mask(stacked_foreground_video, means, variances, thresholds)
-    foreground_mask_to_video("assignment_2/data/cam1/foreground_mask.avi", mask)
+    foreground_mask_to_video(f"assignment_2/data/{CAMERA}/foreground_mask.avi", mask)
