@@ -61,9 +61,10 @@ def calibration(
             pattern_size, 
             square_size
         )
+        corners = all_corners[image_validity_flags]
 
         _, mtx, dist, _, _ = calibrate_camera(
-            all_corners[image_validity_flags], 
+            corners, 
             img_shape, 
             pattern_size, 
             square_size
