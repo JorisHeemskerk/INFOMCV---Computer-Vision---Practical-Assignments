@@ -217,3 +217,5 @@ output/*
 *.xml
 *.avi
 *.mp4
+
+.vscode/
