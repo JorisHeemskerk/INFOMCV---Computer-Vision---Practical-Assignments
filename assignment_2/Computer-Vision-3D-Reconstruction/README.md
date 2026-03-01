@@ -1,3 +1,5 @@
+<h1><span style="color:red">DISCLAIMER: This readme is not for assignment 2, but is kept here for licensing reasons. Please refer to the readme in the folder above instead.</span></h1>
+
 # Computer Vision 3D Reconstruction
 Python OpenGL 3.3
 
