@@ -1,17 +1,15 @@
 import cv2
 import os
 import numpy as np
+from tqdm import tqdm
 
 from detect_corners import \
     detect_corners, \
-    automatic_corner_detector, \
     manual_corner_selector
-from display_axis import draw_axis
 
 
 def calibration(
     source: str,
-    frames_num: int,
     pattern_size: cv2.typing.Size,
     square_size: float
 )-> None:
@@ -41,7 +39,9 @@ def calibration(
             if os.path.isdir(source + folder)
     ]
 
-    for camera in cameras:
+    # for camera in cameras:
+    if True:
+        camera = cameras[-1]
         # Get all frames in video
         frames = stack_video_frames(camera, cv2.COLOR_BGR2GRAY)
         # Detect chessboard corners in frames
@@ -49,11 +49,22 @@ def calibration(
         stride = np.array(range(0, frames.shape[0], 50))
         all_corners, img_shape = detect_corners(frames[stride], pattern_size)
 
-        print(f"{camera}: {len(all_corners)}/{len(frames[stride])}")
-        
-        # Calibrate the camera
-        _, mtx, dist, _, _ = calibrate_camera(
+        print(
+            f"{camera}: {len(all_corners)}/{len(frames[stride])} auto found"
+        )
+        all_corners = np.array(all_corners)
+
+        # Calibrate the camera with images that contribute to calibration
+        image_validity_flags = calibration_contribution(
             all_corners, 
+            img_shape, 
+            pattern_size, 
+            square_size
+        )
+        corners = all_corners[image_validity_flags]
+
+        _, mtx, dist, _, _ = calibrate_camera(
+            corners, 
             img_shape, 
             pattern_size, 
             square_size
@@ -71,6 +82,108 @@ def calibration(
         xml.write("DistortionCoeffs", dist)
 
         xml.release()
+
+
+def calibration_contribution(
+    all_corners: cv2.typing.MatLike, 
+    img_shape: cv2.typing.MatLike, 
+    pattern_size: cv2.typing.Size,
+    square_size: float
+)-> cv2.typing.MatLike:
+    all_img_re_proj_err, _, _, _, _ = calibrate_camera(
+        all_corners, 
+        img_shape, 
+        pattern_size, 
+        square_size
+    )
+    image_validity_flags, (subset_img_re_proj_err, mtx, dist, _, _) = \
+        check_image_calibration_contribution(
+            all_img_re_proj_err, 
+            all_corners, 
+            img_shape, 
+            pattern_size, 
+            square_size
+        )
+    print(
+        f"Calibration error with all images: {all_img_re_proj_err:.3f}\n"
+        "Calibration error with only positively contributing images: "
+        f"{subset_img_re_proj_err:.3f}\nA total of "
+        f"{len(image_validity_flags) - sum(image_validity_flags)} images "
+        f"have been removed.\n{image_validity_flags=}\n{mtx = }"
+    )
+    return image_validity_flags
+
+
+def check_image_calibration_contribution(
+    all_img_re_proj_err: float,
+    all_corners: np.ndarray,
+    img_shape: cv2.typing.MatLike,
+    pattern_size: cv2.typing.Size=[9,6],
+    square_size: float=0.024
+)-> tuple[
+    np.ndarray, 
+    tuple[
+        float,
+        cv2.typing.MatLike,
+        cv2.typing.MatLike,
+        tuple[cv2.typing.MatLike],
+        tuple[cv2.typing.MatLike]
+    ]]:
+    """
+    Performs leave-one-out cross validation to determine for each image
+    if it has a positive or negative effect on the error. All negative
+    impact images are then removed and the new calibration is returned.
+    Along with a mask that shows which images this new calibration 
+    consists of.
+    
+    :param all_img_re_proj_err: The re-projection error to compare to.
+    :type all_img_re_proj_err: float
+    :param all_corners: Container for all the corners of all the images.
+    :type all_corners: np.ndarray
+    :param img_shape: The shape of the image.
+    :type img_shape: MatLike
+    :param pattern_size: The size of the chessboard (n_rows x n_columns)
+        counted as the number of inner corners.
+    :type pattern_size: Size
+    :param square_size: The length of a single chessboard square.
+    :type square_size: float
+    :return: List of flags with 1 when image has positive 
+        contribution and 0 if not, along with the calibration 
+        elements of the best combination of images.
+    :rtype: tuple[
+        np.ndarray, 
+        tuple[
+            float, 
+            MatLike,
+            MatLike,
+            tuple[MatLike],
+            tuple[MatLike]
+        ]]
+    """
+    image_validity_flags = np.zeros(len(all_corners), dtype=bool)
+    for i in tqdm(
+        range(len(all_corners)), 
+        desc="Leaving out 1 image and checking how calibration changes"
+    ):
+        mask = np.ones(len(all_corners), dtype=bool)
+        mask[i] = 0
+        re_proj_err, _, _, _, _ = calibrate_camera(
+            all_corners[mask], 
+            img_shape, 
+            pattern_size, 
+            square_size
+        )
+        # Check if the image has a negative impact on the calibration.
+        if re_proj_err > all_img_re_proj_err:
+            image_validity_flags[i] = 1
+    return \
+        image_validity_flags, \
+        calibrate_camera(
+            all_corners[image_validity_flags], 
+            img_shape, 
+            pattern_size, 
+            square_size
+        )
 
 
 def stack_video_frames(
@@ -271,19 +384,6 @@ def extrinsics(
         )
         rvec = rvec.astype(np.float32)
         tvec = tvec.astype(np.float32)
-
-        draw_axis(
-            frames[0],
-            rvec,
-            tvec,
-            mtx,
-            dist,
-            square_size
-        )
-
-        cv2.imshow("axis", frames[0])
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
 
         xml = cv2.FileStorage(
             camera + "/config.xml",

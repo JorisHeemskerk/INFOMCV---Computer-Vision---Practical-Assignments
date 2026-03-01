@@ -292,6 +292,8 @@ if __name__ == "__main__": # TODO: Move to main.py or something, idk.
     stacked_foreground_video = stack_video_frames(cv2.VideoCapture(f"assignment_2/data/{CAMERA}/video.avi"))
     print(stacked_background_video.shape)
     means, variances = fit_gaussians(stacked_background_video)
+    np.save(f"assignment_2/data/{CAMERA}/means.npy", means)
+    np.save(f"assignment_2/data/{CAMERA}/variances.npy", variances)
 
     # cam 1
     # thresholds = Thresholds(
