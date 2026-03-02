@@ -161,7 +161,10 @@ def set_voxel_positions(
     :returns: Two arrays, the first of which containing x, y, z coords
         per voxel, and the latter r, g, b data for the corresponding
         colours.
-    :rtype: tuple[list[list[int]] | np.ndarray, list[list[int]] | np.ndarray]
+    :rtype: tuple[
+        list[list[int]] | np.ndarray, 
+        list[list[int]] | np.ndarray
+    ]
     """
     frame_id = 0
     masked_frames = get_masked_frame_from_all_cameras(frame_id)
