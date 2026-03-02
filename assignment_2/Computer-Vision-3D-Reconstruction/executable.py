@@ -1,5 +1,7 @@
+import cv2
 import glm
 import glfw
+import time
 from engine.base.program import get_linked_program
 from engine.renderable.model import Model
 from engine.buffer.texture import *
@@ -14,6 +16,10 @@ cube, hdrbuffer, blurbuffer, lastPosX, lastPosY = None, None, None, None, None
 firstTime = True
 window_width, window_height = config['window_width'], config['window_height']
 camera = Camera(glm.vec3(0, 100, 0), pitch=-90, yaw=0, speed=40)
+FRAME_NR = 0
+MAX_FRAMES = min([int(cv2.VideoCapture(f"../data/cam{camera_id + 1}/video.avi").get(cv2.CAP_PROP_FRAME_COUNT)) for camera_id in range(4)]) - 2
+PLAYING = False
+START_TIME, END_TIME = None, None
 
 
 def draw_objs(obj, program, perspective, light_pos, texture, normal, specular, depth):
@@ -44,7 +50,7 @@ def draw_objs(obj, program, perspective, light_pos, texture, normal, specular, d
 
 
 def main():
-    global hdrbuffer, blurbuffer, cube, window_width, window_height
+    global hdrbuffer, blurbuffer, cube, window_width, window_height, PLAYING, FRAME_NR, MAX_FRAMES, START_TIME, END_TIME
 
     if not glfw.init():
         print('Failed to initialize GLFW.')
@@ -130,6 +136,14 @@ def main():
     while not glfw.window_should_close(window):
         if config['debug_mode']:
             print(glGetError())
+        if PLAYING and FRAME_NR < MAX_FRAMES:
+            cube.set_multiple_positions(*set_voxel_positions(FRAME_NR))
+            FRAME_NR += 1
+        elif PLAYING and FRAME_NR >= MAX_FRAMES:
+            END_TIME = time.perf_counter()
+            print(f"\033[31mDone playing entire video. (It took {END_TIME - START_TIME:.3f} seconds to play animation.)\033[37m")
+            PLAYING = False
+            FRAME_NR = 0
 
         current_time = glfw.get_time()
         delta_time = current_time - last_time
@@ -178,14 +192,18 @@ def resize_callback(window, w, h):
         blurbuffer.delete()
         blurbuffer.create(window_width_px, window_height_px)
 
-
 def key_callback(window, key, scancode, action, mods):
     if key == glfw.KEY_ESCAPE and action == glfw.PRESS:
         glfw.set_window_should_close(window, glfw.TRUE)
     if key == glfw.KEY_G and action == glfw.PRESS:
-        global cube
-        positions, colors = set_voxel_positions(config['world_width'], config['world_height'], config['world_width'])
+        global cube, FRAME_NR
+        positions, colors = set_voxel_positions(FRAME_NR)
         cube.set_multiple_positions(positions, colors)
+        FRAME_NR += 1
+    if key == glfw.KEY_P and action == glfw.PRESS:
+        global PLAYING, START_TIME
+        PLAYING = not PLAYING
+        START_TIME = time.perf_counter()
 
 
 def mouse_move(win, pos_x, pos_y):

@@ -167,7 +167,10 @@ def foreground_mask_to_video(
     :param foreground_mask: A foreground masked image.
     :type foreground_mask: np.ndarray
     """
-    foreground_grey = (foreground_mask.astype(np.uint8)) * 255
+    if foreground_mask[0,0].dtype == np.bool:
+        foreground_grey = (foreground_mask.astype(np.uint8)) * 255
+    else:
+        foreground_grey = foreground_mask
     frames, height, width = foreground_grey.shape
     outfile = cv2.VideoWriter(
         destination,
@@ -203,7 +206,7 @@ def optimise_thresholds(
 
     :param stacked_video: An entire video, stacked by frames on axis 0.
         NOTE: Feed the video in black and white format.
-    :param stacked_video: cv2.typing.MatLike, 
+    :param stacked_video: cv2.typing.MatLike
     :param means: Means for the fitted Gausians, same shape as 1 frame.
     :type means: np.ndarray
     :param variances: Variances for the fitted Gausians, same shape as 1
@@ -287,6 +290,46 @@ def optimise_thresholds(
     best_thresholds = Thresholds(*best_thresholds)
     return best_thresholds
 
+def apply_post_processing(
+    stacked_video: cv2.typing.MatLike,
+)-> cv2.typing.MatLike:
+    """
+    Apply post-processing to already masked video.
+
+    Applies dilation, erosion, and blob detection.
+
+    :param stacked_video: An entire video, stacked by frames on axis 0.
+    :param stacked_video: cv2.typing.MatLike 
+    """
+    grey_video = (stacked_video.astype(np.uint8)) * 255
+    kernel = np.ones((3,3), np.uint8)
+    clean_video = []
+    for frame in grey_video:
+        frame = cv2.morphologyEx(
+            frame, 
+            cv2.MORPH_OPEN, 
+            kernel
+        )
+        frame = cv2.morphologyEx(
+            frame, 
+            cv2.MORPH_CLOSE,
+            kernel
+        )
+
+        _, labels, stats, _ = cv2.connectedComponentsWithStats(
+            frame, connectivity=8
+        )
+        # Zero is always the background, so we start from 1.
+        areas = stats[1:, cv2.CC_STAT_AREA]
+        largest_label = 1 + np.argmax(areas)
+        largest_component = np.zeros_like(frame)
+        largest_component[labels == largest_label] = 255
+
+        clean_video.append(largest_component)
+    return np.array(clean_video)
+
+
+
 if __name__ == "__main__": # TODO: Move to main.py or something, idk.
     stacked_background_video = stack_video_frames(cv2.VideoCapture(f"assignment_2/data/{CAMERA}/background.avi"))
     stacked_foreground_video = stack_video_frames(cv2.VideoCapture(f"assignment_2/data/{CAMERA}/video.avi"))
@@ -294,44 +337,42 @@ if __name__ == "__main__": # TODO: Move to main.py or something, idk.
     means, variances = fit_gaussians(stacked_background_video)
     np.save(f"assignment_2/data/{CAMERA}/means.npy", means)
     np.save(f"assignment_2/data/{CAMERA}/variances.npy", variances)
-
-    # cam 1
-    # thresholds = Thresholds(
-    #     h_top=np.float64(5.928571428571429), 
-    #     h_bot=np.float64(10.0), 
-    #     s_top=np.float64(8.642857142857142), 
-    #     s_bot=np.float64(7.2857142857142865), 
-    #     v_top=np.float64(7.2857142857142865), 
-    #     v_bot=np.float64(10.0)
-    # )
-    # cam 2
-    # thresholds = Thresholds(
-    #     h_top=np.float64(10.0), 
-    #     h_bot=np.float64(10.0), 
-    #     s_top=np.float64(10.0), 
-    #     s_bot=np.float64(4.571428571428571), 
-    #     v_top=np.float64(10.0), 
-    #     v_bot=np.float64(4.571428571428571)
-    # )
-    # cam 3
-    # thresholds = Thresholds(
-    #     h_top=np.float64(10.0), 
-    #     h_bot=np.float64(10.0), 
-    #     s_top=np.float64(10.0), 
-    #     s_bot=np.float64(10.0), 
-    #     v_top=np.float64(10.0), 
-    #     v_bot=np.float64(10.0)
-    # )
-    # cam 4
-    # thresholds = Thresholds(
-    #     h_top=np.float64(8.642857142857142), 
-    #     h_bot=np.float64(8.642857142857142), 
-    #     s_top=np.float64(8.642857142857142), 
-    #     s_bot=np.float64(8.642857142857142), 
-    #     v_top=np.float64(5.928571428571429), 
-    #     v_bot=np.float64(10.0)
-    # )
-    thresholds = optimise_thresholds(stacked_foreground_video, means, variances, threshold_search_space=(0.5, 10.0, 8), stride=20)
-    print(thresholds)
+    all_thresholds = {
+        "cam1" : Thresholds(
+            h_top=np.float64(5.928571428571429), 
+            h_bot=np.float64(10.0), 
+            s_top=np.float64(8.642857142857142), 
+            s_bot=np.float64(7.2857142857142865), 
+            v_top=np.float64(7.2857142857142865), 
+            v_bot=np.float64(10.0)
+        ),
+        "cam2" : Thresholds(
+            h_top=np.float64(10.0), 
+            h_bot=np.float64(10.0), 
+            s_top=np.float64(10.0), 
+            s_bot=np.float64(4.571428571428571), 
+            v_top=np.float64(10.0), 
+            v_bot=np.float64(4.571428571428571)
+        ),
+        "cam3" : Thresholds(
+            h_top=np.float64(10.0), 
+            h_bot=np.float64(10.0), 
+            s_top=np.float64(10.0), 
+            s_bot=np.float64(10.0), 
+            v_top=np.float64(10.0), 
+            v_bot=np.float64(10.0)
+        ),
+        "cam4" : Thresholds(
+            h_top=np.float64(8.642857142857142), 
+            h_bot=np.float64(8.642857142857142), 
+            s_top=np.float64(8.642857142857142), 
+            s_bot=np.float64(8.642857142857142), 
+            v_top=np.float64(5.928571428571429), 
+            v_bot=np.float64(10.0)
+        )
+    }
+    thresholds = all_thresholds[CAMERA]
+    # thresholds = optimise_thresholds(stacked_foreground_video, means, variances, threshold_search_space=(0.5, 10.0, 8), stride=20)
     mask = create_foreground_mask(stacked_foreground_video, means, variances, thresholds)
+    mask = apply_post_processing(mask)
     foreground_mask_to_video(f"assignment_2/data/{CAMERA}/foreground_mask.avi", mask)
