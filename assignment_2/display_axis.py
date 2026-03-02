@@ -88,8 +88,10 @@ def draw_cube(
     :param flip_z: Determines if the z axis should be flipped or not.
     :type flip_z: bool
     """
-    TL = (-1.2, -1.4)
-    BR = (1.8, 1.6)
+    # TL = (-1.2, -1.4)
+    # BR = (1.8, 1.6)
+    TL = (-0.15, -0.4)
+    BR = (0.85, 0.6)
     z = 1.5
     cube_points = np.array([
         [TL[0], TL[1], 0],

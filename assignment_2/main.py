@@ -25,11 +25,11 @@ def main()-> None:
     ####################################################################
     #                      Calibrate the cameras.                      #
     ####################################################################
-    calibration(
-        "assignment_2/data/",
-        PATTERN_SIZE,
-        SQUARE_SIZE
-    )
+    # calibration(
+    #     "assignment_2/data/",
+    #     PATTERN_SIZE,
+    #     SQUARE_SIZE
+    # )
 
     ####################################################################
     #                   Calculate camera extrinsics.                   #

@@ -331,7 +331,7 @@ if __name__ == "__main__": # TODO: Move to main.py or something, idk.
     #     v_top=np.float64(5.928571428571429), 
     #     v_bot=np.float64(10.0)
     # )
-    thresholds = optimise_thresholds(stacked_foreground_video, means, variances, threshold_search_space=(0.5, 10.0, 8), stride=20)
-    print(thresholds)
-    mask = create_foreground_mask(stacked_foreground_video, means, variances, thresholds)
-    foreground_mask_to_video(f"assignment_2/data/{CAMERA}/foreground_mask.avi", mask)
+    # thresholds = optimise_thresholds(stacked_foreground_video, means, variances, threshold_search_space=(0.5, 10.0, 8), stride=20)
+    # print(thresholds)
+    # mask = create_foreground_mask(stacked_foreground_video, means, variances, thresholds)
+    # foreground_mask_to_video(f"assignment_2/data/{CAMERA}/foreground_mask.avi", mask)

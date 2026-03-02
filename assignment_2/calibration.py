@@ -39,9 +39,7 @@ def calibration(
             if os.path.isdir(source + folder)
     ]
 
-    # for camera in cameras:
-    if True:
-        camera = cameras[-1]
+    for camera in cameras:
         # Get all frames in video
         frames = stack_video_frames(camera, cv2.COLOR_BGR2GRAY)
         # Detect chessboard corners in frames
