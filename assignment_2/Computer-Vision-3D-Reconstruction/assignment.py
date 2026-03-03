@@ -331,7 +331,20 @@ def set_voxel_positions(
         visible_voxels, \
         np.full((len(visible_voxels), 3), [255, 0, 0], dtype=np.uint8)
 
-def get_cam_positions():
+def get_cam_positions()-> tuple[cv2.typing.MatLike, list[list[float]]]:
+    """
+    Gets the voxel-world position of the cameras.
+
+    First uses the rotation and translation vectors of the cameras to
+    determine the location of the camera compared to the chessboard.
+    Then uses the origin defined in `origin` and the `VOXEL_SIZE` to
+    translate the camera position to it's voxel-world position. Finally
+    switches the Y and Z axis to match the glm world.
+
+    :returns: An array containing the in-voxel-world location of the
+        cameras and a list containing color values for the cameras.
+    :rtype: tuple[cv2.typing.MatLike, list[list[float]]]
+    """
     cam_positions = []
     for camera in CAMERA_CONFIGS:
         rmat, _ = cv2.Rodrigues(camera.rvec)
@@ -349,7 +362,17 @@ def get_cam_positions():
     return cam_positions, [[1, 0, 0], [1, 0.5, 0], [1, 1, 0], [0, 1, 0]]
 
 
-def get_cam_rotation_matrices():
+def get_cam_rotation_matrices()-> list[glm.mat4]:
+    """
+    Gets the voxel-world rotation of the cameras.
+
+    Before making the rotation matrix an homogenous matrix translate the
+    rotation matrix so it's XYZ columns become ordered as YZX to match 
+    the voxel-world.
+
+    :returns: A list containing glm mat4 4x4 rotations of the cameraas
+    :rtype: list[glm.mat4]
+    """
     # Reorder columns so XYZ are now YZX
     P = np.array([
         [0, 0, 1],
