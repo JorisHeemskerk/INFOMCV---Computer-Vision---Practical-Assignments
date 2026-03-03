@@ -337,74 +337,35 @@ def get_cam_positions():
         replace = camera_position.flatten() - ORIGIN
         in_grid = replace / VOXEL_SIZE
         in_grid *= block_size
-        in_grid[2] = in_grid[2] * -1 + 64 
+        in_grid[2] = in_grid[2] * -1 + config['world_height']
         in_grid = in_grid - np.array(
-            [128 / 2, 128 / 2, 0], 
+            [config['world_width'] / 2, config['world_depth'] / 2, 0], 
             dtype=np.float32
         )
         cam_positions.append(in_grid)
-        cam_positions.append(in_grid)
     cam_positions = np.array(cam_positions)[:, [0, 2, 1]]
-    return cam_positions, [[1.0, 0, 0], [0, 1.0, 0], [0, 1.0, 1.0], [1.0, 1.0, 1.0],[1.0, 0, 0], [0, 1.0, 0], [0, 1.0, 1.0], [1.0, 1.0, 1.0]]
-
-
-def rotation_matrix_to_euler_angles(R):
-    sy = np.sqrt(R[0,0]**2 + R[1,0]**2)
-
-    singular = sy < 1e-6
-
-    if not singular:
-        x = np.arctan2(R[2,1], R[2,2])   # roll
-        y = np.arctan2(-R[2,0], sy)      # pitch
-        z = np.arctan2(R[1,0], R[0,0])   # yaw
-    else:
-        x = np.arctan2(-R[1,2], R[1,1])
-        y = np.arct2(-R[2,0], sy)
-        z = 0
-
-    return np.degrees([z, y, x])  # yaw, pitch, roll
+    return cam_positions, [[1.0, 0, 0], [1.0, 0, 0], [1.0, 1.0, 1.0], [1.0, 0, 0]]
 
 
 def get_cam_rotation_matrices():
+    # Reorder columns so XYZ are now YZX
+    P = np.array([
+        [0, 0, 1],
+        [1, 0, 0],
+        [0, 1, 0]
+    ], dtype=np.float32)
+
     cam_rotations = []
     for camera in CAMERA_CONFIGS:
         rmat, _ = cv2.Rodrigues(camera.rvec)
-        rotation = np.zeros((4, 4))
-        rotation[:3, :3] = rmat
-        rotation[3, 3] = 1
-        cam_rotations.append(glm.mat4(rotation))
-
-        M_convert = np.array([
-            [1,  0,  0],
-            [0,  0, -1],
-            [0,  1,  0]
-        ], dtype=np.float32)
-
-        R_gl = M_convert @ rmat
-
+        
+        R_gl = rmat @ P
+        
         rotation = np.zeros((4, 4))
         rotation[:3, :3] = R_gl
         rotation[3, 3] = 1
+        
         cam_rotations.append(glm.mat4(rotation))
-    return cam_rotations
     
-    cam_angles = []
-    for camera in CAMERA_CONFIGS:
-        origin = np.array([[1], [1], [1]])
-        rmat, _ = cv2.Rodrigues(camera.rvec)
-        print(rotation_matrix_to_euler_angles(rmat.T))
-        # print(np.dot(origin, rmat))
-        # exit()
-    
-    # return cam_rotations
-    # Generates dummy camera rotation matrices, looking down 45 degrees towards the center of the room
-    # TODO: You need to input the estimated camera rotation matrices (4x4) of the 4 cameras in the world coordinates.
-    # cam_angles = [[0, 45, -45], [0, 135, -45], [0, 225, -45], [0, 315, -45]]
-    cam_angles = [[-42.9, -0.38, 81.9], [0, 90, 0], [90, 0, 0], [0, 180, 0]]
-    cam_rotations = [glm.mat4(1), glm.mat4(1), glm.mat4(1), glm.mat4(1)]
-    for c in range(len(cam_rotations)):
-        cam_rotations[c] = glm.rotate(cam_rotations[c], cam_angles[c][0] * np.pi / 180, [1, 0, 0])
-        cam_rotations[c] = glm.rotate(cam_rotations[c], cam_angles[c][1] * np.pi / 180, [0, 1, 0])
-        cam_rotations[c] = glm.rotate(cam_rotations[c], cam_angles[c][2] * np.pi / 180, [0, 0, 1])
     return cam_rotations
 

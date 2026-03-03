@@ -113,7 +113,7 @@ def main():
     perspective = glm.perspective(45, window_width / window_height, config['near_plane'], config['far_plane'])
 
     cam_rot_matrices = get_cam_rotation_matrices()
-    cam_shapes = [Model('resources/models/camera.json', cam_rot_matrices[c]) for c in range(8)]
+    cam_shapes = [Model('resources/models/camera.json', cam_rot_matrices[c]) for c in range(4)]
     square = Model('resources/models/square.json')
     cube = Model('resources/models/cube.json')
     texture = load_texture_2d('resources/textures/diffuse.jpg')
