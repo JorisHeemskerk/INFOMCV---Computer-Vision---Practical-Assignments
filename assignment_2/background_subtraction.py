@@ -296,7 +296,7 @@ def apply_post_processing(
     """
     Apply post-processing to already masked video.
 
-    Applies dilation, erosion, and blob detection.
+    Applies erosion -> dilation, erosion -> dilation and blob detection.
 
     :param stacked_video: An entire video, stacked by frames on axis 0.
     :param stacked_video: cv2.typing.MatLike 
