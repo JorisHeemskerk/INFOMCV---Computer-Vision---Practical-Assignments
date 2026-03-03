@@ -131,9 +131,13 @@ def get_all_masked_frames_from_all_cameras(
 # NOTE: Constant defined here, due to dependency on above function(s). #
 ########################################################################
 try:
-    CACHED_MASKED_VIDEOS = get_all_masked_frames_from_all_cameras()
+    CACHED_MASKED_VIDEOS = np.load("cached_masked_videos.npy")
 except:
-    CACHED_MASKED_VIDEOS = None
+    try:
+        CACHED_MASKED_VIDEOS = get_all_masked_frames_from_all_cameras()
+        np.save("cached_masked_videos.npy", CACHED_MASKED_VIDEOS)
+    except:
+        CACHED_MASKED_VIDEOS = None
 
 def get_masked_frame_from_all_cameras(
     frame_id: int,
@@ -326,8 +330,6 @@ def set_voxel_positions(
     return \
         visible_voxels, \
         np.full((len(visible_voxels), 3), [255, 0, 0], dtype=np.uint8)
-
-
 
 def get_cam_positions():
     cam_positions = []
