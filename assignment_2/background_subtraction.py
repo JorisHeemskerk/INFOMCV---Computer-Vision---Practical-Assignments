@@ -340,6 +340,26 @@ def apply_post_processing(
         largest_label = 1 + np.argmax(areas)
         largest_component = np.zeros_like(frame)
         largest_component[labels == largest_label] = 255
+        if CAMERA == "cam2":
+            y_min = 330
+            y_max = 280
+
+            roi = largest_component[y_max:y_min + 1, :]
+
+            roi_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (13, 13))
+            roi_filled = cv2.morphologyEx(roi, cv2.MORPH_CLOSE, roi_kernel)
+
+            largest_component[y_max:y_min + 1, :] = roi_filled
+        elif CAMERA == "cam3":
+            y_min = 350
+            y_max = 300
+
+            roi = largest_component[y_max:y_min + 1, :]
+
+            roi_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (13, 13))
+            roi_filled = cv2.morphologyEx(roi, cv2.MORPH_CLOSE, roi_kernel)
+
+            largest_component[y_max:y_min + 1, :] = roi_filled
 
         clean_video.append(largest_component)
     return np.array(clean_video)
@@ -366,16 +386,16 @@ if __name__ == "__main__": # TODO: Move to main.py or something, idk.
             h_top=np.float64(10.0), 
             h_bot=np.float64(10.0), 
             s_top=np.float64(10.0), 
-            s_bot=np.float64(4.571428571428571), 
+            s_bot=np.float64(6), 
             v_top=np.float64(10.0), 
             v_bot=np.float64(4.571428571428571)
         ),
         "cam3" : Thresholds(
-            h_top=np.float64(10.0), 
-            h_bot=np.float64(10.0), 
-            s_top=np.float64(10.0), 
-            s_bot=np.float64(10.0), 
-            v_top=np.float64(10.0), 
+            h_top=np.float64(10), 
+            h_bot=np.float64(10), 
+            s_top=np.float64(8.642857142857142), 
+            s_bot=np.float64(9), 
+            v_top=np.float64(5.928571428571429), 
             v_bot=np.float64(10.0)
         ),
         "cam4" : Thresholds(
