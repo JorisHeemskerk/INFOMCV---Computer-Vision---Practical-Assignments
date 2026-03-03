@@ -375,7 +375,6 @@ def apply_post_processing(
         largest_label = 1 + np.argmax(areas)
         largest_component = np.zeros_like(frame)
         largest_component[labels == largest_label] = 255
-        cv2.imshow("before", largest_component)
                     
         if CAMERA == "cam2":
             y_min = 330
@@ -407,10 +406,6 @@ def apply_post_processing(
             roi_filled = cv2.morphologyEx(roi, cv2.MORPH_CLOSE, roi_kernel)
 
             largest_component[y_max:y_min + 1, :] = roi_filled
-        cv2.imshow("after", largest_component)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-        exit()
 
         clean_video.append(largest_component)
     return np.array(clean_video)
