@@ -11,7 +11,8 @@ from background_subtraction import \
     Thresholds, \
     create_foreground_mask, \
     stack_video_frames, \
-    apply_post_processing
+    apply_post_processing, \
+    ALL_THRESHOLDS
 from dataclasses import dataclass
 from engine.config import config
 
@@ -41,42 +42,8 @@ def get_camera_configs()-> list[CameraConfig]:
     :returns: List of 4 CameraConfig objects.
     :rtype: list[CameraConfig]
     """
-    all_thresholds = [
-        Thresholds(
-            h_top=np.float64(5.928571428571429), 
-            h_bot=np.float64(10.0), 
-            s_top=np.float64(8.642857142857142), 
-            s_bot=np.float64(7.2857142857142865), 
-            v_top=np.float64(7.2857142857142865), 
-            v_bot=np.float64(10.0)
-        ),
-        Thresholds(
-            h_top=np.float64(10.0), 
-            h_bot=np.float64(10.0), 
-            s_top=np.float64(10.0), 
-            s_bot=np.float64(4.571428571428571), 
-            v_top=np.float64(10.0), 
-            v_bot=np.float64(4.571428571428571)
-        ),
-        Thresholds(
-            h_top=np.float64(10.0), 
-            h_bot=np.float64(10.0), 
-            s_top=np.float64(10.0), 
-            s_bot=np.float64(10.0), 
-            v_top=np.float64(10.0), 
-            v_bot=np.float64(10.0)
-        ),
-        Thresholds(
-            h_top=np.float64(8.642857142857142), 
-            h_bot=np.float64(8.642857142857142), 
-            s_top=np.float64(8.642857142857142), 
-            s_bot=np.float64(8.642857142857142), 
-            v_top=np.float64(5.928571428571429), 
-            v_bot=np.float64(10.0)
-        )
-    ]
     camera_configs: list[CameraConfig] = []
-    for i, camera in enumerate(["cam1", "cam2", "cam3", "cam4"]):
+    for camera in ["cam1", "cam2", "cam3", "cam4"]:
         config = cv2.FileStorage(
             f"../data/{camera}/config.xml",
             cv2.FileStorage_READ
@@ -87,7 +54,7 @@ def get_camera_configs()-> list[CameraConfig]:
             rvec=config.getNode("RotationVec").mat(),
             tvec=config.getNode("TranslationVec").mat(),
             dist=config.getNode("DistortionCoeffs").mat(),
-            thresholds=all_thresholds[i],
+            thresholds=ALL_THRESHOLDS[camera],
             means=np.load(f"../data/{camera}/means.npy"),
             variances=np.load(f"../data/{camera}/variances.npy")
         ))
@@ -131,12 +98,15 @@ def get_all_masked_frames_from_all_cameras(
 # NOTE: Constant defined here, due to dependency on above function(s). #
 ########################################################################
 try:
+    print("\033[32mAttempting load masked videos from file...\033[37m")
     CACHED_MASKED_VIDEOS = np.load("cached_masked_videos.npy")
 except:
     try:
+        print("\033[31mFailed!\033[37m")
         CACHED_MASKED_VIDEOS = get_all_masked_frames_from_all_cameras()
         np.save("cached_masked_videos.npy", CACHED_MASKED_VIDEOS)
     except:
+        print("\033[31mFailed!\033[37m")
         CACHED_MASKED_VIDEOS = None
 
 def get_masked_frame_from_all_cameras(
@@ -315,8 +285,6 @@ def set_voxel_positions(
         list[list[int]] | np.ndarray
     ]
     """
-    # import time
-    # start_time = time.perf_counter()
     masked_frames = get_masked_frame_from_all_cameras(frame_id)
 
     # Project all points onto the masked frame(s).
@@ -325,8 +293,6 @@ def set_voxel_positions(
     # Only pixels that are visible in all cameras count as actual.
     visible_voxels = VOXEL_GRID[np.all(voxel_frames, axis=0)]
 
-    # end_time = time.perf_counter()
-    # print(f"Function took {end_time - start_time:.6f} seconds")
     return \
         visible_voxels, \
         np.full((len(visible_voxels), 3), [255, 0, 0], dtype=np.uint8)

@@ -18,6 +18,41 @@ class Thresholds:
     v_top: float
     v_bot: float
 
+ALL_THRESHOLDS = {
+        "cam1" : Thresholds(
+            h_top=np.float64(5.928571428571429), 
+            h_bot=np.float64(10.0), 
+            s_top=np.float64(8.642857142857142), 
+            s_bot=np.float64(7.2857142857142865), 
+            v_top=np.float64(7.2857142857142865), 
+            v_bot=np.float64(10.0)
+        ),
+        "cam2" : Thresholds(
+            h_top=np.float64(10.0), 
+            h_bot=np.float64(10.0), 
+            s_top=np.float64(10.0), 
+            s_bot=np.float64(6), 
+            v_top=np.float64(10.0), 
+            v_bot=np.float64(4.571428571428571)
+        ),
+        "cam3" : Thresholds(
+            h_top=np.float64(10), 
+            h_bot=np.float64(10), 
+            s_top=np.float64(8.642857142857142), 
+            s_bot=np.float64(9), 
+            v_top=np.float64(5.928571428571429), 
+            v_bot=np.float64(10.0)
+        ),
+        "cam4" : Thresholds(
+            h_top=np.float64(8.642857142857142), 
+            h_bot=np.float64(8.642857142857142), 
+            s_top=np.float64(8.642857142857142), 
+            s_bot=np.float64(8.642857142857142), 
+            v_top=np.float64(5.928571428571429), 
+            v_bot=np.float64(10.0)
+        )
+    }
+
 def stack_video_frames(
     source: str | cv2.VideoCapture,
     colour: int | None=None
@@ -158,9 +193,6 @@ def foreground_mask_to_video(
 )-> None:
     """
     Writes foreground mask to .avi video. 
-    
-    This function only works when `foreground_mask` contains 0's and 
-    1's, while the dtype does not matter.
 
     :param destination: The output directory/path.
     :type destination: str
@@ -182,6 +214,25 @@ def foreground_mask_to_video(
     for i in range(frames):
         outfile.write(foreground_grey[i])
     outfile.release()
+
+def foreground_mask_to_single_frame(
+    destination: str, 
+    foreground_mask: np.ndarray
+)-> None:
+    """
+    Writes the first frame of foreground mask to file. 
+
+    :param destination: The output directory/path.
+    :type destination: str
+    :param foreground_mask: A foreground masked image.
+    :type foreground_mask: np.ndarray
+    """
+    if foreground_mask[0,0].dtype == np.bool:
+        foreground_grey = (foreground_mask.astype(np.uint8)) * 255
+    else:
+        foreground_grey = foreground_mask
+
+    cv2.imwrite(destination, foreground_grey[0])
 
 def optimise_thresholds(
     stacked_video: cv2.typing.MatLike, 
@@ -373,42 +424,10 @@ if __name__ == "__main__": # TODO: Move to main.py or something, idk.
     means, variances = fit_gaussians(stacked_background_video)
     np.save(f"assignment_2/data/{CAMERA}/means.npy", means)
     np.save(f"assignment_2/data/{CAMERA}/variances.npy", variances)
-    all_thresholds = {
-        "cam1" : Thresholds(
-            h_top=np.float64(5.928571428571429), 
-            h_bot=np.float64(10.0), 
-            s_top=np.float64(8.642857142857142), 
-            s_bot=np.float64(7.2857142857142865), 
-            v_top=np.float64(7.2857142857142865), 
-            v_bot=np.float64(10.0)
-        ),
-        "cam2" : Thresholds(
-            h_top=np.float64(10.0), 
-            h_bot=np.float64(10.0), 
-            s_top=np.float64(10.0), 
-            s_bot=np.float64(6), 
-            v_top=np.float64(10.0), 
-            v_bot=np.float64(4.571428571428571)
-        ),
-        "cam3" : Thresholds(
-            h_top=np.float64(10), 
-            h_bot=np.float64(10), 
-            s_top=np.float64(8.642857142857142), 
-            s_bot=np.float64(9), 
-            v_top=np.float64(5.928571428571429), 
-            v_bot=np.float64(10.0)
-        ),
-        "cam4" : Thresholds(
-            h_top=np.float64(8.642857142857142), 
-            h_bot=np.float64(8.642857142857142), 
-            s_top=np.float64(8.642857142857142), 
-            s_bot=np.float64(8.642857142857142), 
-            v_top=np.float64(5.928571428571429), 
-            v_bot=np.float64(10.0)
-        )
-    }
-    thresholds = all_thresholds[CAMERA]
+
+    thresholds = ALL_THRESHOLDS[CAMERA]
     # thresholds = optimise_thresholds(stacked_foreground_video, means, variances, threshold_search_space=(0.5, 10.0, 8), stride=20)
     mask = create_foreground_mask(stacked_foreground_video, means, variances, thresholds)
     mask = apply_post_processing(mask)
+    foreground_mask_to_single_frame(f"assignment_2/data/{CAMERA}/foreground_mask.jpg", mask)
     foreground_mask_to_video(f"assignment_2/data/{CAMERA}/foreground_mask.avi", mask)
