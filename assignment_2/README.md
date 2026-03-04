@@ -39,7 +39,7 @@ For this, use the [background_subtraction](background_subtraction.py) script.
 ```
 python background_subtraction.py
 ```
-At the top of the script, configure which camera to calibrate. At the bottom, the already found optimal thresholds can be found and they can replace the lengthy calibration process. This file outputs two cache files, prints the optimal thresholds and creates a video of the background subtraction results.
+At the top of the script, configure which camera to calibrate. At the top, the already found optimal thresholds can be found and they can replace the lengthy calibration process. This file outputs two cache files, prints the optimal thresholds and creates a video of the background subtraction results.
 
 ### 3. Voxel reconstruction
 For this, we used the provided [Computer-Vision-3D-Reconstruction
@@ -51,7 +51,7 @@ This code outputs to an interactive window. These are the controls:
 ```
 [WASD] - to move around
 [G]    - to spawn in the next frame of the video
-[C]    - To switch between colour mode and black and white mode (applies to the next rendered frame)
+[C]    - To switch between colour mode and RED mode (applies to the next rendered frame)
 [P]    - Render all the frames 1 by 1 in the video.
 ```
 
