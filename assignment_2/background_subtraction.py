@@ -6,7 +6,7 @@ import joblib
 from dataclasses import dataclass
 from tqdm import tqdm
 
-CAMERA = "cam2"
+CAMERA = "cam4"
 
 
 @dataclass
@@ -343,6 +343,7 @@ def optimise_thresholds(
 
 def apply_post_processing(
     stacked_video: cv2.typing.MatLike,
+    camera: str
 )-> cv2.typing.MatLike:
     """
     Apply post-processing to already masked video.
@@ -351,6 +352,8 @@ def apply_post_processing(
 
     :param stacked_video: An entire video, stacked by frames on axis 0.
     :param stacked_video: cv2.typing.MatLike 
+    :param camera: the camera the post-processing is applied to.
+    :type camera: str
     """
     grey_video = (stacked_video.astype(np.uint8)) * 255
     kernel = np.ones((3,3), np.uint8)
@@ -376,11 +379,11 @@ def apply_post_processing(
         largest_component = np.zeros_like(frame)
         largest_component[labels == largest_label] = 255
                     
-        if CAMERA == "cam2":
+        if camera == "cam2":
             hole_filling(330, 280, largest_component)
-        elif CAMERA == "cam3":
+        elif camera == "cam3":
             hole_filling(350, 300, largest_component)
-        elif CAMERA == "cam4":
+        elif camera == "cam4":
             hole_filling(280, 250, largest_component)
 
         clean_video.append(largest_component)
@@ -420,6 +423,6 @@ if __name__ == "__main__": # TODO: Move to main.py or something, idk.
     thresholds = ALL_THRESHOLDS[CAMERA]
     # thresholds = optimise_thresholds(stacked_foreground_video, means, variances, threshold_search_space=(0.5, 10.0, 8), stride=20)
     mask = create_foreground_mask(stacked_foreground_video, means, variances, thresholds)
-    mask = apply_post_processing(mask)
+    mask = apply_post_processing(mask, CAMERA)
     foreground_mask_to_single_frame(f"assignment_2/data/{CAMERA}/foreground_mask.jpg", mask)
     foreground_mask_to_video(f"assignment_2/data/{CAMERA}/foreground_mask.avi", mask)

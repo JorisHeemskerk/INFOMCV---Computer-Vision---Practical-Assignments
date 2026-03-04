@@ -88,7 +88,7 @@ def get_all_masked_frames_from_all_cameras(
             config.variances, 
             config.thresholds
         )
-        mask = apply_post_processing(mask)
+        mask = apply_post_processing(mask, config.camera)
         masked_videos.append(mask)
     return np.array(masked_videos)
 

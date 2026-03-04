@@ -25,20 +25,20 @@ def main()-> None:
     ####################################################################
     #                      Calibrate the cameras.                      #
     ####################################################################
-    # calibration(
-    #     "assignment_2/data/",
-    #     PATTERN_SIZE,
-    #     SQUARE_SIZE
-    # )
+    calibration(
+        "assignment_2/data/",
+        PATTERN_SIZE,
+        SQUARE_SIZE
+    )
 
     ####################################################################
     #                   Calculate camera extrinsics.                   #
     ####################################################################
-    # extrinsics(
-    #     "assignment_2/data/",
-    #     PATTERN_SIZE,
-    #     SQUARE_SIZE
-    # )
+    extrinsics(
+        "assignment_2/data/",
+        PATTERN_SIZE,
+        SQUARE_SIZE
+    )
 
     source = "assignment_2/data/"
     cameras = [
@@ -46,6 +46,9 @@ def main()-> None:
             if os.path.isdir(source + folder)
     ]
 
+    ####################################################################
+    #                        Plot axis on videos                       #
+    ####################################################################
     for camera in cameras:
         vid = cv2.VideoCapture(camera + "/video.avi")
         _, img = vid.read()
@@ -59,20 +62,13 @@ def main()-> None:
         tvec = camera_config.getNode("TranslationVec").mat()
         dist = camera_config.getNode("DistortionCoeffs").mat()
 
-        # draw_axis(
-        #     img,
-        #     rvec,
-        #     tvec,
-        #     mtx,
-        #     dist,
-        #     SQUARE_SIZE
-        # )
-        draw_cube(
+        draw_axis(
             img,
             rvec,
             tvec,
             mtx,
-            dist
+            dist,
+            SQUARE_SIZE
         )
         cv2.imshow(f"cube: {camera[-4:]}", img)
     cv2.waitKey(0)
