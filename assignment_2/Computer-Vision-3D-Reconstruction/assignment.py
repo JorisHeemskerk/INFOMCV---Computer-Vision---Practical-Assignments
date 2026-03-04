@@ -67,21 +67,19 @@ CAMERA_CONFIGS = get_camera_configs()
 
 def get_all_masked_frames_from_all_cameras(
     camera_configs: list[CameraConfig]=CAMERA_CONFIGS
-)-> list[cv2.typing.MatLike]:
+)-> np.ndarray:
     """
     Extracts a masked foreground-background view from each camera at
     the provided frame ID.
 
-    :param frame_id: The index of the desired frame.
-    :type frame_id: int
     :param camera_configs: List of camera configurations. 
         (DEFAULT=CAMERA_CONFIGS)
     :type camera_configs: list[CameraConfig] 
-    :returns: List of frames with applied masks.
-    :rtype: list[MatLike]
+    :returns: List of videos with applied masks.
+    :rtype: np.ndarray
     """
     print("\033[32mAttempting to pre-load and pre-mask all videos...\033[37m")
-    masked_videos: list[cv2.typing.MatLike] = []
+    masked_videos = []
     for config in camera_configs:
         video = stack_video_frames(f"../data/{config.camera}/video.avi")
         mask = create_foreground_mask(
@@ -92,27 +90,53 @@ def get_all_masked_frames_from_all_cameras(
         )
         mask = apply_post_processing(mask)
         masked_videos.append(mask)
-    return masked_videos
+    return np.array(masked_videos)
+
+def get_all_coloured_frames_from_all_cameras(
+    camera_configs: list[CameraConfig]=CAMERA_CONFIGS
+)-> np.ndarray:
+    """
+    Extracts all coloured videos from all camera perspectives.
+
+    Converts the format to RGB, then normalises the pixel values to be 
+    between 0 and 1, as required per the environment.
+
+    :param camera_configs: List of camera configurations. 
+        (DEFAULT=CAMERA_CONFIGS)
+    :type camera_configs: list[CameraConfig] 
+    :returns: List of videos.
+    :rtype: np.ndrarray
+    """
+    print("\033[32mAttempting to pre-load all coloured videos...\033[37m")
+    all_videos: list[cv2.typing.MatLike] = []
+    for config in camera_configs:
+        video = stack_video_frames(
+            f"../data/{config.camera}/video.avi", 
+            cv2.COLOR_BGR2RGB
+        ).astype(np.float32)
+        # Normalise all pixel values between 0 and 1.
+        video /= 255 
+        all_videos.append(video)
+    return np.array(all_videos)
 
 ########################################################################
 # NOTE: Constant defined here, due to dependency on above function(s). #
 ########################################################################
 try:
-    print("\033[32mAttempting load masked videos from file...\033[37m")
+    print("\033[32mAttempting load (masked) videos from file...\033[37m")
     CACHED_MASKED_VIDEOS = np.load("cached_masked_videos.npy")
+    CACHED_ORIGINAL_VIDEOS = np.load("cached_original_videos.npy")
 except:
-    try:
-        print("\033[31mFailed!\033[37m")
-        CACHED_MASKED_VIDEOS = get_all_masked_frames_from_all_cameras()
-        np.save("cached_masked_videos.npy", CACHED_MASKED_VIDEOS)
-    except:
-        print("\033[31mFailed!\033[37m")
-        CACHED_MASKED_VIDEOS = None
+    print("\033[31mFailed!\033[37m")
+    CACHED_MASKED_VIDEOS = get_all_masked_frames_from_all_cameras()
+    CACHED_ORIGINAL_VIDEOS = get_all_coloured_frames_from_all_cameras()
+    np.save("cached_masked_videos.npy", CACHED_MASKED_VIDEOS)
+    np.save("cached_original_videos.npy", CACHED_ORIGINAL_VIDEOS)
 
 def get_masked_frame_from_all_cameras(
     frame_id: int,
     camera_configs: list[CameraConfig]=CAMERA_CONFIGS,
-    cache: list[cv2.typing.MatLike] | None=CACHED_MASKED_VIDEOS
+    cache: np.ndarray | None=CACHED_MASKED_VIDEOS
 )-> np.ndarray:
     """
     Extracts a masked foreground-background view from each camera at
@@ -124,12 +148,12 @@ def get_masked_frame_from_all_cameras(
         (DEFAULT=CAMERA_CONFIGS)
     :type camera_configs: list[CameraConfig]
     :param cache: Cache containing pre-processed and masked videos.
-    :type cache: list[cv2.typing.MatLike] | None
+    :type cache: np.ndarray | None
     :returns: List of frames with applied masks.
     :rtype: np.ndarray
     """
     if cache is not None:
-        return np.array([video[frame_id] for video in cache])
+        return cache[:, frame_id]
     masked_frames: list[cv2.typing.MatLike] = []
     for config in camera_configs:
         source = cv2.VideoCapture(f"../data/{config.camera}/video.avi")
@@ -141,7 +165,9 @@ def get_masked_frame_from_all_cameras(
         source.set(cv2.CAP_PROP_POS_FRAMES, frame_id)
         success, img = source.read()
         if not success:
-            raise RuntimeError(f"\033[31mFrame {frame_id} could not be read.")
+            raise RuntimeError(
+                f"\033[31mFrame {frame_id} could not be read.\033[37m"
+            )
         mask = create_foreground_mask(
             # Function expects multiple frames for parallel processing,
             # but since each frame has a different config, we cant.
@@ -260,7 +286,8 @@ def generate_grid(width, depth):
     return data, colors
 
 def set_voxel_positions(
-    frame_id: int
+    frame_id: int,
+    do_colour: bool=True
 )-> tuple[list[list[int]] | np.ndarray, list[list[int]] | np.ndarray]:
     """
     Calculates which voxels to display for a given frame.
@@ -275,8 +302,13 @@ def set_voxel_positions(
     that can be cached are cached (all except checking if the camera 
     sees a certain point or not.).
 
+    When `do_colour` == True, each voxel gets a colour corresponding
+    to the mean of the colour in the original image space.
+
     :param frame_id: ID of frame to parse.
     :type frame_id: int
+    :param do_colour: If True, apply colouring algorithm. (DEFAULT=TRUE)
+    :type do_colour: bool
     :returns: Two arrays, the first of which containing x, y, z coords
         per voxel, and the latter r, g, b data for the corresponding
         colours.
@@ -291,11 +323,26 @@ def set_voxel_positions(
     voxel_frames = masked_frames[CAMERA_INDEX_MASK, XSS, YSS]
 
     # Only pixels that are visible in all cameras count as actual.
-    visible_voxels = VOXEL_GRID[np.all(voxel_frames, axis=0)]
+    combined_voxel_frames = np.all(voxel_frames, axis=0)
+    visible_voxels = VOXEL_GRID[combined_voxel_frames]
+
+    voxel_colours = np.empty((1,))
+    if do_colour:
+        visible_xss = XSS[CAMERA_INDEX_MASK, combined_voxel_frames]
+        visible_yss = YSS[CAMERA_INDEX_MASK, combined_voxel_frames]
+
+        coloured_videos = CACHED_ORIGINAL_VIDEOS[:, frame_id]
+        voxel_colours = coloured_videos[
+            CAMERA_INDEX_MASK, 
+            visible_xss, 
+            visible_yss
+        ]
+        voxel_colours = np.mean(voxel_colours, axis=0)
 
     return \
         visible_voxels, \
-        np.full((len(visible_voxels), 3), [255, 0, 0], dtype=np.uint8)
+        voxel_colours if do_colour else \
+            np.full((len(visible_voxels), 3), [255, 0, 0], dtype=np.uint8)
 
 def get_cam_positions():
     cam_positions = []

@@ -20,6 +20,7 @@ FRAME_NR = 0
 MAX_FRAMES = min([int(cv2.VideoCapture(f"../data/cam{camera_id + 1}/video.avi").get(cv2.CAP_PROP_FRAME_COUNT)) for camera_id in range(4)]) - 2
 PLAYING = False
 START_TIME, END_TIME = None, None
+DO_COLOUR = True
 
 
 def draw_objs(obj, program, perspective, light_pos, texture, normal, specular, depth):
@@ -137,7 +138,7 @@ def main():
         if config['debug_mode']:
             print(glGetError())
         if PLAYING and FRAME_NR < MAX_FRAMES:
-            cube.set_multiple_positions(*set_voxel_positions(FRAME_NR))
+            cube.set_multiple_positions(*set_voxel_positions(FRAME_NR, DO_COLOUR))
             FRAME_NR += 1
         elif PLAYING and FRAME_NR >= MAX_FRAMES:
             END_TIME = time.perf_counter()
@@ -196,14 +197,16 @@ def key_callback(window, key, scancode, action, mods):
     if key == glfw.KEY_ESCAPE and action == glfw.PRESS:
         glfw.set_window_should_close(window, glfw.TRUE)
     if key == glfw.KEY_G and action == glfw.PRESS:
-        global cube, FRAME_NR
-        positions, colors = set_voxel_positions(FRAME_NR)
+        global cube, FRAME_NR, DO_COLOUR
+        positions, colors = set_voxel_positions(FRAME_NR, DO_COLOUR)
         cube.set_multiple_positions(positions, colors)
         FRAME_NR += 1
     if key == glfw.KEY_P and action == glfw.PRESS:
         global PLAYING, START_TIME
         PLAYING = not PLAYING
         START_TIME = time.perf_counter()
+    if key == glfw.KEY_C and action == glfw.PRESS:
+        DO_COLOUR = not DO_COLOUR
 
 
 def mouse_move(win, pos_x, pos_y):
