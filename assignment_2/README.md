@@ -47,5 +47,12 @@ For this, we used the provided [Computer-Vision-3D-Reconstruction
 ```
 python executable.py
 ``` 
-This code outputs to an interactive window. use [WASD] to move around and [G] to spawn in the voxels. \
+This code outputs to an interactive window. These are the controls:
+```
+[WASD] - to move around
+[G]    - to spawn in the next frame of the video
+[C]    - To switch between colour mode and black and white mode (applies to the next rendered frame)
+[P]    - Render all the frames 1 by 1 in the video.
+```
+
 Make sure to execute this from the Computer-Vision-3D-Reconstruction directory.
