@@ -6,7 +6,7 @@ import joblib
 from dataclasses import dataclass
 from tqdm import tqdm
 
-CAMERA = "cam4"
+CAMERA = "cam2"
 
 
 @dataclass
@@ -377,38 +377,35 @@ def apply_post_processing(
         largest_component[labels == largest_label] = 255
                     
         if CAMERA == "cam2":
-            y_min = 330
-            y_max = 280
-
-            roi = largest_component[y_max:y_min + 1, :]
-
-            roi_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (13, 13))
-            roi_filled = cv2.morphologyEx(roi, cv2.MORPH_CLOSE, roi_kernel)
-
-            largest_component[y_max:y_min + 1, :] = roi_filled
+            hole_filling(330, 280, largest_component)
         elif CAMERA == "cam3":
-            y_min = 350
-            y_max = 300
-
-            roi = largest_component[y_max:y_min + 1, :]
-
-            roi_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (13, 13))
-            roi_filled = cv2.morphologyEx(roi, cv2.MORPH_CLOSE, roi_kernel)
-
-            largest_component[y_max:y_min + 1, :] = roi_filled
-
+            hole_filling(350, 300, largest_component)
         elif CAMERA == "cam4":
-            y_min = 280
-            y_max = 250
-
-            roi = largest_component[y_max:y_min + 1, :]
-            roi_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (13, 13))
-            roi_filled = cv2.morphologyEx(roi, cv2.MORPH_CLOSE, roi_kernel)
-
-            largest_component[y_max:y_min + 1, :] = roi_filled
+            hole_filling(280, 250, largest_component)
 
         clean_video.append(largest_component)
     return np.array(clean_video)
+
+
+def hole_filling(y_min: int, y_max: int, largest_component: np.ndarray)-> None:
+    """
+    Applies dilation to a vertical range of a frame and puts this back
+    into the image.
+
+    :param y_min: The bottom value of the vertical range.
+    :type y_min: int
+    :param y_max: The top value of the vertical range.
+    :type y_max: int
+    :param largest_component: The frame the dilation will be applied
+        upon.
+    :type largest_component: np.ndarray
+    """
+    roi = largest_component[y_max:y_min + 1, :]
+    roi_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (13, 13))
+    roi_filled = cv2.morphologyEx(roi, cv2.MORPH_CLOSE, roi_kernel)
+
+    largest_component[y_max:y_min + 1, :] = roi_filled
+
 
 
 
