@@ -285,6 +285,151 @@ def generate_grid(width, depth):
             colors.append([1.0, 1.0, 1.0] if (x+z) % 2 == 0 else [0, 0, 0])
     return data, colors
 
+##############################################################################################################################
+##############################################################################################################################
+##############################################################################################################################
+##############################################################################################################################
+from dataclasses import dataclass, field
+
+EXPLOSION_ORIGIN = np.array([0.0, 0.0, 0.0], dtype=np.float32)
+
+@dataclass
+class ExplosionState:
+    """
+    Holds the per-voxel velocity state across frames.
+    Velocities are keyed by a rounded coordinate tuple so they can be 
+    matched across calls even if voxel arrays are reordered.
+    """
+    velocities: dict = field(default_factory=dict)
+
+    # Physics constants
+    blast_strength:  float = 10.2   # Initial outward impulse magnitude
+    gravity:         float = 0.05  # Downward acceleration per tick (Y axis)
+    damping:         float = 0.97  # Velocity decay factor per tick (air drag)
+    floor_y:         float = -64.0 # Y below which voxels bounce
+    bounce_restitution: float = 0.35 # Energy retained on floor bounce
+
+    def _coord_key(self, pos: np.ndarray) -> tuple:
+        """Round position to a stable hashable key."""
+        return tuple(np.round(pos, 2))
+
+    def _init_velocity(self, pos: np.ndarray) -> np.ndarray:
+        """
+        Compute the initial blast velocity for a freshly-encountered voxel.
+
+        The direction is the unit vector from the explosion origin to the 
+        voxel. A small random jitter breaks symmetry so the result looks 
+        organic rather than perfectly radial.
+        """
+        direction = pos - EXPLOSION_ORIGIN
+        dist = np.linalg.norm(direction)
+
+        if dist < 1e-6:
+            # Voxel sits exactly at the origin — send it straight up.
+            direction = np.array([0.0, 1.0, 0.0], dtype=np.float32)
+        else:
+            direction = direction / dist
+
+        # Scale impulse: closer voxels get a stronger kick.
+        falloff = 1.0 / (1.0 + 0.05 * dist)
+        speed   = self.blast_strength * falloff
+
+        jitter  = np.random.uniform(-0.1, 0.1, size=3).astype(np.float32)
+        return (direction + jitter) * speed
+
+    def step(
+        self,
+        positions: np.ndarray,   # shape (N, 3)
+        colours:   np.ndarray,   # shape (N, 3)  — passed through unchanged
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Apply one physics tick to every voxel.
+
+        For each voxel:
+          1. Look up (or initialise) its velocity in the state dictionary.
+          2. Apply gravity.
+          3. Integrate: new_pos = pos + velocity.
+          4. Bounce off the floor.
+          5. Apply damping.
+          6. Store the updated velocity.
+
+        :param positions: Voxel XYZ coordinates, shape (N, 3).
+        :param colours:   Corresponding RGB values,  shape (N, 3).
+        :returns: (new_positions, colours) with the same shapes.
+        """
+        new_positions = positions.copy().astype(np.float32)
+
+        for i, pos in enumerate(positions):
+            key = self._coord_key(pos)
+
+            # First time we see this voxel: assign blast velocity.
+            if key not in self.velocities:
+                self.velocities[key] = self._init_velocity(pos)
+
+            vel = self.velocities[key].copy()
+
+            # --- Physics update ---
+            vel[1] -= self.gravity          # gravity pulls down Y
+
+            new_pos = pos + vel
+
+            # Floor bounce: reflect Y velocity with energy loss.
+            if new_pos[1] < self.floor_y:
+                new_pos[1]  = self.floor_y
+                vel[1]      = abs(vel[1]) * self.bounce_restitution
+
+            vel *= self.damping             # air resistance
+
+            # Persist updated velocity under the *new* key so subsequent
+            # calls continue tracking the moved voxel.
+            new_key = self._coord_key(new_pos)
+            self.velocities[new_key] = vel
+
+            # Clean up the old key if the voxel actually moved.
+            if new_key != key:
+                self.velocities.pop(key, None)
+
+            new_positions[i] = new_pos
+
+        return new_positions, colours
+
+
+# ---------------------------------------------------------------------------
+# Module-level singleton — create once, call repeatedly each frame.
+# ---------------------------------------------------------------------------
+_explosion_state = ExplosionState()
+
+def explode_voxels(
+    positions: np.ndarray,
+    colours:   np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Public entry point.  Drop-in replacement for the positions returned 
+    by `set_voxel_positions`:
+
+        positions, colours = set_voxel_positions(frame_id)
+        positions, colours = explode_voxels(positions, colours)
+
+    Call once per rendered frame.  The internal state accumulates across
+    calls so the explosion evolves over time automatically.
+
+    :param positions: Voxel XYZ coordinates from `set_voxel_positions`.
+    :param colours:   Matching RGB colours   from `set_voxel_positions`.
+    :returns: (new_positions, colours)
+    """
+    return _explosion_state.step(positions, colours)
+
+
+def reset_explosion() -> None:
+    """Clear all velocities so the explosion can be re-triggered."""
+    global _explosion_state
+    _explosion_state = ExplosionState()
+
+##############################################################################################################################
+##############################################################################################################################
+##############################################################################################################################
+##############################################################################################################################
+
 def set_voxel_positions(
     frame_id: int,
     do_colour: bool=True

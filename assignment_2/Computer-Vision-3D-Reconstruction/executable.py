@@ -8,7 +8,7 @@ from engine.buffer.texture import *
 from engine.buffer.hdrbuffer import HDRBuffer
 from engine.buffer.blurbuffer import BlurBuffer
 from engine.effect.bloom import Bloom
-from assignment import set_voxel_positions, generate_grid, get_cam_positions, get_cam_rotation_matrices
+from assignment import set_voxel_positions, generate_grid, get_cam_positions, get_cam_rotation_matrices, explode_voxels
 from engine.camera import Camera
 from engine.config import config
 
@@ -21,6 +21,11 @@ MAX_FRAMES = min([int(cv2.VideoCapture(f"../data/cam{camera_id + 1}/video.avi").
 PLAYING = False
 START_TIME, END_TIME = None, None
 DO_COLOUR = True
+##############################################################################################################################
+##############################################################################################################################
+EXPLODING, VOXELS, COLOURS = False, None, None
+##############################################################################################################################
+##############################################################################################################################
 
 
 def draw_objs(obj, program, perspective, light_pos, texture, normal, specular, depth):
@@ -145,6 +150,14 @@ def main():
             print(f"\033[31mDone playing entire video. (It took {END_TIME - START_TIME:.3f} seconds to play animation.)\033[37m")
             PLAYING = False
             FRAME_NR = 0
+##############################################################################################################################
+##############################################################################################################################
+        elif EXPLODING:
+            global VOXELS, COLOURS
+            VOXELS, COLOURS = explode_voxels(VOXELS, COLOURS)
+            cube.set_multiple_positions(VOXELS, COLOURS)
+##############################################################################################################################
+##############################################################################################################################
 
         current_time = glfw.get_time()
         delta_time = current_time - last_time
@@ -207,6 +220,14 @@ def key_callback(window, key, scancode, action, mods):
         START_TIME = time.perf_counter()
     if key == glfw.KEY_C and action == glfw.PRESS:
         DO_COLOUR = not DO_COLOUR
+##############################################################################################################################
+##############################################################################################################################
+    if key == glfw.KEY_E and action == glfw.PRESS:
+        global EXPLODING, VOXELS, COLOURS
+        VOXELS, COLOURS = set_voxel_positions(FRAME_NR, DO_COLOUR)
+        EXPLODING = not EXPLODING
+##############################################################################################################################
+##############################################################################################################################
 
 
 def mouse_move(win, pos_x, pos_y):
