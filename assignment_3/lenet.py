@@ -20,16 +20,15 @@ class LeNet5(nn.Module):
         self.fc6 = nn.Linear(7680, 84)
         self.fc7 = nn.Linear(84, 10)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor)-> torch.Tensor:
         """
         Perform a forward pass on the network.
 
         :param x:
-        :type x:
-        :return:
-        :rtype:
+        :type x: torch.Tensor
+        :return: Input tensor of shape (batch_size, 3, 32, 32).
+        :rtype: torch.Tensor
         """
-        print(type(x))
         x = self.conv1(x)
         x = F.relu(x)
         x = self.pool2(x)
@@ -42,6 +41,6 @@ class LeNet5(nn.Module):
         x = self.fc6(x)
         x = F.relu(x)
         x = self.fc7(x)
-        print(type(F.softmax(x, dim=1)))
+        
         return F.softmax(x, dim=1)
     
