@@ -61,7 +61,7 @@ def train(
     print("Done training")
 
     if save_final_dir is not None:
-        filename = f"{model.__name__}.pth"
+        filename = f"{model.__class__.__name__}.pth"
         print(f"Saving final model to {save_final_dir}/{filename}")
         torch.save(model, f"{save_final_dir}/{filename}")
 
@@ -107,11 +107,12 @@ def train_epoch(
         if batch % 100 == 0:
             loss, current = loss.item(), batch * len(y) + len(X)
             print(
-                f"loss: {loss:>7f}  "
+                f"train loss: {loss:>7f}  "
                 f"[{current:>5d}/{len(dataloader.dataset):>5d}]"
             )
-    return train_loss / len(dataloader), correct / len(dataloader.dataset)
-
+    return \
+        train_loss / len(dataloader), \
+        100 * (correct / len(dataloader.dataset))
 
 def val_epoch(
     dataloader: DataLoader, 
@@ -146,7 +147,7 @@ def val_epoch(
     test_loss /= len(dataloader)
     correct /= len(dataloader.dataset)
     print(
-        f"Test Error: \n Accuracy: {(100 * correct):>0.1f}%, Avg loss: "
+        f"validation Error: \n Accuracy: {(100 * correct):>0.1f}%, Avg loss: "
         f"{test_loss:>8f} \n"
     )
     return test_loss, 100 * correct

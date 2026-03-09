@@ -3,9 +3,10 @@ import torch
 from torch import nn
 from torchvision import datasets
 
-from data import load_datasets, to_dataloaders, visualise_all_classes
+from data import load_datasets, to_dataloaders
 from train import train
 from lenet import LeNet5
+from visualise import visualise_all_classes, visualise_training
 
 
 torch.manual_seed(42)
@@ -23,7 +24,7 @@ def main()-> None:
         root="assignment_3/data/", 
         train_val_partition=(.8, .2)
     )
-    visualise_all_classes(train_data, test_data.classes)
+    # visualise_all_classes(train_data, test_data.classes)
 
     BATCH_SIZE = 32
     train_data, val_data, test_data = to_dataloaders(
@@ -43,7 +44,7 @@ def main()-> None:
     ####################################################################
     #                     Set the hyperparemeters.                     #
     ####################################################################
-    N_EPOCHS = 5
+    N_EPOCHS = 20
     LEARNING_RATE = 0.001
 
     OPTIMISER = torch.optim.Adam(params=model.parameters(), lr=LEARNING_RATE)
@@ -58,8 +59,20 @@ def main()-> None:
         loss_fn=LOSS_FN,
         optimizer=OPTIMISER,
         n_epochs=N_EPOCHS,
-        device=DEVICE
+        device=DEVICE,
+        save_final_dir="assignment_3/model_cache"
+    )
+
+    visualise_training(
+        train_losses, 
+        train_accuracies, 
+        val_losses, 
+        val_accuracies
     )
 
 if __name__ == "__main__":
+    import time
+    start = time.time()
     main()
+    end = time.time()
+    print(f"Ran entire code in {end - start:.2f} seconds.")

@@ -1,5 +1,3 @@
-import math
-import matplotlib.pyplot as plt
 import torch
 
 from torchvision.transforms import ToTensor
@@ -99,38 +97,3 @@ def to_dataloaders(
             )
         )
     return dataLoaders
-
-def visualise_all_classes(dataset: Dataset, labels: list[str])-> None:
-    """
-    Visualise 1 element of each class.
-
-    :param dataset: A Pytorch Dataset object.
-    :type datasets: Dataset
-    :param labels: list of labels
-    :type labels: list[str]
-    """
-    def best_grid(n):
-        rows = round(math.sqrt(n))
-        while n % rows != 0:
-            rows -= 1
-        cols = n // rows
-        return rows, cols
-    
-    # Collect one sample per class.
-    class_samples = {}
-    for idx in range(len(dataset)):
-        _, label = dataset[idx]
-        if label not in class_samples:
-            class_samples[label] = idx
-        if len(class_samples) == len(labels):
-            break
-
-    figure = plt.figure(figsize=(8, 8))
-    rows, cols = best_grid(len(labels))
-    for i, class_idx in enumerate(sorted(class_samples.keys()), start=1):
-        img, label = dataset[class_samples[class_idx]]
-        figure.add_subplot(rows, cols, i)
-        plt.title(labels[label])
-        plt.axis("off")
-        plt.imshow(img.permute(1, 2, 0))
-    plt.show()
