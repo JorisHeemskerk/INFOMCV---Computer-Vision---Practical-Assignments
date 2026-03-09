@@ -37,7 +37,9 @@ def main()-> None:
     ####################################################################
     lenet_5 = LeNet5()
 
-    model = lenet_5.to(DEVICE)
+    model = lenet_5
+
+    model = model.to(DEVICE)
     ####################################################################
     #                     Set the hyperparemeters.                     #
     ####################################################################
@@ -49,7 +51,7 @@ def main()-> None:
     ####################################################################
     #                         Train the model.                         #
     ####################################################################
-    train(
+    train_losses, train_accuracies, val_losses, val_accuracies = train(
         train_dataloader=train_data, 
         val_dataloader=val_data,
         model=model,
