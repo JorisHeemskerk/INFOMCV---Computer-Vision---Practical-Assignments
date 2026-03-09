@@ -7,7 +7,7 @@ class LeNet5(nn.Module):
     """
     The LeNet-5 model architecture but for color images.
     """
-    def __init__(self):
+    def __init__(self)-> None:
         """
         Define the convolutional, pooling and fully connected layers.
         """
@@ -21,6 +21,15 @@ class LeNet5(nn.Module):
         self.fc7 = nn.Linear(84, 10)
 
     def forward(self, x):
+        """
+        Perform a forward pass on the network.
+
+        :param x:
+        :type x:
+        :return:
+        :rtype:
+        """
+        print(type(x))
         x = self.conv1(x)
         x = F.relu(x)
         x = self.pool2(x)
@@ -33,5 +42,6 @@ class LeNet5(nn.Module):
         x = self.fc6(x)
         x = F.relu(x)
         x = self.fc7(x)
+        print(type(F.softmax(x, dim=1)))
         return F.softmax(x, dim=1)
     
