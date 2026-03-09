@@ -1,0 +1,37 @@
+import torch
+from torch import nn
+import torch.nn.functional as F
+
+
+class LeNet5(nn.Module):
+    """
+    The LeNet-5 model architecture but for color images.
+    """
+    def __init__(self):
+        """
+        Define the convolutional, pooling and fully connected layers.
+        """
+        super(LeNet5, self).__init__()
+        self.conv1 = nn.Conv2d(3, 6, 5, padding=2)
+        self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.conv3 = nn.Conv2d(6, 16, 5, padding=2)
+        self.pool4 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.conv5 = nn.Conv2d(16, 120, 5, padding=2)
+        self.fc6 = nn.Linear(7680, 84)
+        self.fc7 = nn.Linear(84, 10)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = F.relu(x)
+        x = self.pool2(x)
+        x = self.conv3(x)
+        x = F.relu(x)
+        x = self.pool4(x)
+        x = self.conv5(x)
+        x = F.relu(x)
+        x = torch.flatten(x, 1)
+        x = self.fc6(x)
+        x = F.relu(x)
+        x = self.fc7(x)
+        return F.softmax(x, dim=1)
+    
