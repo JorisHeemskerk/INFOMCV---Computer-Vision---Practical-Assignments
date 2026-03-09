@@ -6,7 +6,12 @@ from torchvision import datasets
 from data import load_datasets, to_dataloaders, visualise_all_classes
 from train import train
 from lenet import LeNet5
+
+
 torch.manual_seed(42)
+DEVICE = torch.accelerator.current_accelerator().type if \
+    torch.accelerator.is_available() else "cpu"
+print(f"Using {DEVICE} device")
 
 
 def main()-> None:
@@ -26,6 +31,8 @@ def main()-> None:
         batch_sizes=[BATCH_SIZE] * 3,
         shuffles=[True, True, False]
     )
+
+
     ####################################################################
     #                          Load the model.                         #
     ####################################################################
