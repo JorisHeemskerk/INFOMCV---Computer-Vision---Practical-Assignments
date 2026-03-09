@@ -1,10 +1,12 @@
+import numpy as np
 import torch
 
 from torch import nn
 from torchvision import datasets
+from torch.utils.data import ConcatDataset
 
 from data import load_datasets, to_dataloaders
-from train import train
+from train import train, train_cross_validation
 from lenet import LeNet5
 from visualise import visualise_all_classes, visualise_training
 
@@ -12,26 +14,28 @@ from visualise import visualise_all_classes, visualise_training
 torch.manual_seed(42)
 DEVICE = torch.accelerator.current_accelerator().type if \
     torch.accelerator.is_available() else "cpu"
-print(f"Using {DEVICE} device")
+print(f"\033[1;35mUsing {DEVICE} device\033[0;37m")
 
 
 def main()-> None:
     ####################################################################
     #                          Load the data.                          #
     ####################################################################
-    train_data, val_data, test_data = load_datasets(
+    train_dataset, val_dataset, test_dataset = load_datasets(
         dataset=datasets.CIFAR10, 
         root="assignment_3/data/", 
         train_val_partition=(.8, .2)
     )
-    # visualise_all_classes(train_data, test_data.classes)
+    all_train_dataset = ConcatDataset([train_dataset, val_dataset])
+    # visualise_all_classes(train_dataset, test_dataset.classes)
 
     BATCH_SIZE = 32
-    train_data, val_data, test_data = to_dataloaders(
-        [train_data, val_data, test_data],
-        batch_sizes=[BATCH_SIZE] * 3,
-        shuffles=[True, True, False]
-    )
+    train_dataloader, val_dataloader, test_dataloader = \
+        to_dataloaders(
+            [train_dataset, val_dataset, test_dataset],
+            batch_sizes=[BATCH_SIZE] * 3,
+            shuffles=[True, True, False]
+        )
 
     ####################################################################
     #                          Load the model.                         #
@@ -44,30 +48,75 @@ def main()-> None:
     ####################################################################
     #                     Set the hyperparemeters.                     #
     ####################################################################
-    N_EPOCHS = 20
+    N_EPOCHS = 10
     LEARNING_RATE = 0.001
+    K_FOLDS: int | None = 5
 
     OPTIMISER = torch.optim.Adam(params=model.parameters(), lr=LEARNING_RATE)
+    SCHEDULER = None
+    # SCHEDULER = torch.optim.lr_scheduler.StepLR(
+    #     OPTIMISER, 
+    #     step_size=5, 
+    #     gamma=0.5
+    # )
     LOSS_FN = nn.CrossEntropyLoss()
     ####################################################################
     #                         Train the model.                         #
     ####################################################################
-    train_losses, train_accuracies, val_losses, val_accuracies = train(
-        train_dataloader=train_data, 
-        val_dataloader=val_data,
-        model=model,
-        loss_fn=LOSS_FN,
-        optimizer=OPTIMISER,
-        n_epochs=N_EPOCHS,
-        device=DEVICE,
-        save_final_dir="assignment_3/model_cache"
-    )
+    if K_FOLDS is None:
+        # Train it the normal way.
+        train_losses, train_accuracies, val_losses, val_accuracies = train(
+            train_dataloader=train_dataloader, 
+            val_dataloader=val_dataloader,
+            model=model,
+            loss_fn=LOSS_FN,
+            optimiser=OPTIMISER,
+            scheduler=SCHEDULER,
+            n_epochs=N_EPOCHS,
+            device=DEVICE,
+            save_final_dir="assignment_3/model_cache"
+        )
+        train_losses_std, train_accuracies_std = None, None
+        val_losses_std, val_accuracies_std = None, None
+    else:
+        # Use k-fold cross validation
+        train_lossess, train_accuraciess, val_lossess, val_accuraciess = \
+            train_cross_validation(
+                full_train_dataset=all_train_dataset, 
+                k_folds=5,
+                dataset_to_dataloader_function=lambda dataset: to_dataloaders(
+                    [dataset],
+                    batch_sizes=[BATCH_SIZE],
+                    shuffles=[False]
+                ),
+                model=model,
+                loss_fn=LOSS_FN,
+                optimiser=OPTIMISER,
+                scheduler=SCHEDULER,
+                n_epochs=N_EPOCHS,
+                device=DEVICE,
+                save_final_dir="assignment_3/model_cache"
+            )
+        train_losses = np.mean(train_lossess, axis=0)
+        train_losses_std  = np.std(train_lossess, axis=0)
 
+        train_accuracies = np.mean(train_accuraciess, axis=0)
+        train_accuracies_std  = np.std(train_accuraciess, axis=0)
+        
+        val_losses = np.mean(val_lossess, axis=0)
+        val_losses_std  = np.std(val_lossess, axis=0)
+        
+        val_accuracies = np.mean(val_accuraciess, axis=0)
+        val_accuracies_std  = np.std(val_accuracies, axis=0)
     visualise_training(
         train_losses, 
         train_accuracies, 
         val_losses, 
-        val_accuracies
+        val_accuracies,
+        train_losses_std, 
+        train_accuracies_std,
+        val_losses_std, 
+        val_accuracies_std
     )
 
 if __name__ == "__main__":

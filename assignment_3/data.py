@@ -47,9 +47,9 @@ def load_datasets(
     )
     if verbose:
         print(
-            f"Dataset sizes:\n\tTrain: {len(train_dataset)} datapoints"
+            f"\033[30mDataset sizes:\n\tTrain: {len(train_dataset)} datapoints"
             f"\n\tVal:   {len(val_dataset)} datapoints"
-            f"\n\tTest: {len(test_dataset)} datapoints"
+            f"\n\tTest: {len(test_dataset)} datapoints\033[37m"
         )
 
     return train_dataset, val_dataset, test_dataset
@@ -85,9 +85,9 @@ def to_dataloaders(
     for dataset, batch_size, shuffle in zip(datasets, batch_sizes, shuffles):
         if verbose:
             print(
-                f"Converting dataset of {len(dataset)} elements into "
+                f"\033[30mConverting dataset of {len(dataset)} elements into "
                 f"DataLoader with {len(dataset) // batch_size} partitions of "
-                f"size {batch_size}.")
+                f"size {batch_size}.\033[37m")
         dataLoaders.append(
             DataLoader(
                 dataset=dataset, 
