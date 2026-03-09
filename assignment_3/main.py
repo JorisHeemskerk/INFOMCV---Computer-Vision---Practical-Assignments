@@ -6,9 +6,9 @@ from torchvision import datasets
 from torch.utils.data import ConcatDataset
 
 from data import load_datasets, to_dataloaders
-from train import train, train_cross_validation
+from train import train, train_cross_validation, embed_data
 from lenet import LeNet5
-from visualise import visualise_all_classes, visualise_training
+from visualise import visualise_all_classes, visualise_training, perform_tSNE
 
 
 torch.manual_seed(42)
@@ -30,11 +30,11 @@ def main()-> None:
     # visualise_all_classes(train_dataset, test_dataset.classes)
 
     BATCH_SIZE = 32
-    train_dataloader, val_dataloader, test_dataloader = \
+    train_dataloader, val_dataloader, all_train_dataloader, test_dataloader = \
         to_dataloaders(
-            [train_dataset, val_dataset, test_dataset],
-            batch_sizes=[BATCH_SIZE] * 3,
-            shuffles=[True, True, False]
+            [train_dataset, val_dataset, all_train_dataset, test_dataset],
+            batch_sizes=[BATCH_SIZE] * 4,
+            shuffles=[True, True, True, False]
         )
 
     ####################################################################
@@ -48,9 +48,9 @@ def main()-> None:
     ####################################################################
     #                     Set the hyperparemeters.                     #
     ####################################################################
-    N_EPOCHS = 10
+    N_EPOCHS = 5
     LEARNING_RATE = 0.001
-    K_FOLDS: int | None = 5
+    K_FOLDS: int | None = None
 
     OPTIMISER = torch.optim.Adam(params=model.parameters(), lr=LEARNING_RATE)
     SCHEDULER = None
@@ -117,6 +117,13 @@ def main()-> None:
         train_accuracies_std,
         val_losses_std, 
         val_accuracies_std
+    )
+    ####################################################################
+    #                   Perform t-SNE on test data.                    #
+    ####################################################################
+    perform_tSNE(
+        *embed_data(test_dataloader, model, DEVICE), 
+        test_dataset.classes
     )
 
 if __name__ == "__main__":

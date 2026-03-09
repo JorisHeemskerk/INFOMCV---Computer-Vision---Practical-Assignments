@@ -2,6 +2,9 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 
+from sklearn.manifold import TSNE
+from typing import Any
+
 
 def visualise_all_classes(dataset: Dataset, labels: list[str])-> None:
     """
@@ -113,4 +116,62 @@ def visualise_training(
     ax[1].legend()
     plt.tight_layout()
     plt.savefig('assignment_3/results.png')
+    plt.show()
+
+def perform_tSNE(
+    embeddings: np.ndarray, 
+    labels: np.ndarray, 
+    label_names: dict[int, str],
+    **kwargs: dict[str, Any]
+)-> None:
+    """
+    Trains t-SNE model on embeddings and visiualises results.
+
+    :param embeddings: embeddings for the entire dataset.
+    :type embeddings: np.ndarray
+    :param labels: list of integers corresponding to the datapoint  
+        labels by index.
+    :type labels: np.ndarray
+    :param label_names: dictionary mapping the label indices to names.
+    :type label_names: dict[int, str]
+    :param **kwargs: Keyword arguments to pass to TSNE method.
+    :type **kwargs: dict[str, Any]
+    """
+    print("\033[33mFitting t-SNE...\033[30m")
+    tsne = TSNE(n_components=2, verbose=2, **kwargs)
+    reduced = tsne.fit_transform(embeddings)
+    print("\033[32mDone fitting t-SNE.\033[37m")
+
+    unique_labels = np.unique(labels)
+    cmap = plt.cm.get_cmap('tab20', len(unique_labels))
+    label_to_color = {label: cmap(i) for i, label in enumerate(unique_labels)}
+    colors = [label_to_color[label] for label in labels]
+
+    plt.figure(figsize=(100, 100))
+    x, y = zip(*reduced)
+    plt.scatter(x, y, c=colors, alpha=.5)
+
+    # Add a com
+    handles = [
+        plt.Line2D(
+            [0], 
+            [0], 
+            marker='o', 
+            color='w', 
+            markerfacecolor=label_to_color[label],
+            markersize=8, 
+            label=label_names[label]
+        ) for label in unique_labels
+    ]
+    plt.legend(
+        handles=handles, 
+        title="Classes", 
+        loc='center left', 
+        bbox_to_anchor=(1, 0.5)
+    )
+
+    plt.title("t-SNE projection of all datapoints")
+    plt.xlabel("component 1")
+    plt.ylabel("component 2")
+    plt.savefig('assignment_3/t-SNE.png')
     plt.show()

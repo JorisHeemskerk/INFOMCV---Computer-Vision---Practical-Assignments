@@ -21,6 +21,20 @@ class LeNet5(nn.Module):
         self.fc7 = nn.Linear(84, 10)
 
     def forward(self, x):
+        x = self.embed(x)
+        x = self.fc7(x)
+        return F.softmax(x, dim=1)
+    
+    def embed(self, x: torch.Tensor):
+        """
+        This method only embeds the data using the 6th fully connected
+        layer. It does not make predictions.
+
+        :param x: Input tensor.
+        :type x: torch.Tensor
+        :returns: Embedded tensor of length 84.
+        :rtype: torch.Tensor
+        """
         x = self.conv1(x)
         x = F.relu(x)
         x = self.pool2(x)
@@ -31,7 +45,4 @@ class LeNet5(nn.Module):
         x = F.relu(x)
         x = torch.flatten(x, 1)
         x = self.fc6(x)
-        x = F.relu(x)
-        x = self.fc7(x)
-        return F.softmax(x, dim=1)
-    
+        return F.relu(x)

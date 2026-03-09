@@ -7,6 +7,9 @@ from torch.utils.data import DataLoader, Dataset, Subset
 from typing import Callable
 from tqdm import tqdm
 
+from lenet import LeNet5
+
+
 def train_cross_validation(
     full_train_dataset: Dataset, 
     k_folds: int,
@@ -252,3 +255,32 @@ def val_epoch(
         f"Avg loss: {test_loss:>8f} \n\033[37m"
     )
     return test_loss, 100 * correct
+
+def embed_data(
+    dataloader: DataLoader, 
+    model: LeNet5,
+    device: str
+)-> tuple[np.ndarray, np.ndarray]:
+    """
+    Only embed the data, to be used in clustering algorithms.
+
+    :param dataloader: The dataset to embed.
+    :type dataloader: DataLoader
+    :param model: Model to use for embedding.
+    :type model: LeNet5
+    :param device: On which device to embed the data.
+    :type device: str 
+    :returns: The embeddings and labels.
+    :rtype: tuple[np.ndarray, np.ndarray]
+    """
+    embeddings = []
+    labels = []
+    # Embed the training data
+    model.eval()
+    with torch.no_grad():
+         for X, y in dataloader:
+            X = X.to(device)
+            embedding = model.embed(X)
+            embeddings.append(embedding.cpu().numpy())
+            labels.append(y.cpu().numpy())
+    return np.concatenate(embeddings, axis=0), np.concatenate(labels, axis=0)
