@@ -5,6 +5,7 @@ from torchvision import datasets
 
 from data import load_datasets, to_dataloaders, visualise_all_classes
 from train import train
+from lenet import LeNet5
 torch.manual_seed(42)
 
 
@@ -28,7 +29,7 @@ def main()-> None:
     ####################################################################
     #                          Load the model.                         #
     ####################################################################
-    lenet_5 = nn.Module()
+    lenet_5 = LeNet5()
 
     model = lenet_5
     ####################################################################
