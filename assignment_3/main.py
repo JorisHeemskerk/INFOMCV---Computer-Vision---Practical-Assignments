@@ -32,7 +32,6 @@ def main()-> None:
         shuffles=[True, True, False]
     )
 
-
     ####################################################################
     #                          Load the model.                         #
     ####################################################################
@@ -56,7 +55,8 @@ def main()-> None:
         model=model,
         loss_fn=LOSS_FN,
         optimizer=OPTIMISER,
-        n_epochs=N_EPOCHS
+        n_epochs=N_EPOCHS,
+        device=DEVICE
     )
 
 if __name__ == "__main__":
