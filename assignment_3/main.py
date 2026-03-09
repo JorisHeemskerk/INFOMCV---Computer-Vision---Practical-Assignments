@@ -19,7 +19,7 @@ def main()-> None:
     )
     visualise_all_classes(train_data, test_data.classes)
 
-    BATCH_SIZE = 16
+    BATCH_SIZE = 32
     train_data, val_data, test_data = to_dataloaders(
         [train_data, val_data, test_data],
         batch_sizes=[BATCH_SIZE] * 3,
