@@ -218,5 +218,6 @@ output/*
 *.avi
 *.mp4
 *.ipynb
+*.pth
 
 .vscode/
