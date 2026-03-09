@@ -8,7 +8,7 @@ class Lenet5(nn.Module):
     The LeNet-5 model architecture but for color images.
     """
     def __init__(self):
-        super.__init__(Lenet5, self)
+        super(Lenet5, self).__init__()
         self.conv1 = nn.Conv2d(3, 6, kernel_size=5)
 
     def forward(self, x):
