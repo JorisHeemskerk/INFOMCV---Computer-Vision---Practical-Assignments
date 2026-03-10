@@ -258,7 +258,7 @@ def val_epoch(
 
 def embed_data(
     dataloader: DataLoader, 
-    model: LeNet5,
+    model: LeNet5Base,
     device: str
 )-> tuple[np.ndarray, np.ndarray]:
     """
