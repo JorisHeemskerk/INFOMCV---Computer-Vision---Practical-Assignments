@@ -41,6 +41,7 @@ def main()-> None:
     #                          Load the model.                         #
     ####################################################################
     lenet_5 = LeNet5()
+    print(lenet_5)
 
     model = lenet_5
 
