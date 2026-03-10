@@ -42,10 +42,8 @@ def main()-> None:
     #                          Load the model.                         #
     ####################################################################
     model = LeNet5Base()
-    print("HIERO")
-    model.initialize_weights()
-    exit()
 
+    model.initialize_weights()
     model = model.to(DEVICE)
     ####################################################################
     #                     Set the hyperparemeters.                     #
