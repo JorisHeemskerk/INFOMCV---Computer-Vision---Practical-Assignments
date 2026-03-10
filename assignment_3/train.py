@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader, Dataset, Subset
 from typing import Callable
 from tqdm import tqdm
 
-from lenet import LeNet5
+from lenet5_base import LeNet5Base
 
 
 def train_cross_validation(
@@ -258,7 +258,7 @@ def val_epoch(
 
 def embed_data(
     dataloader: DataLoader, 
-    model: LeNet5,
+    model: LeNet5Base,
     device: str
 )-> tuple[np.ndarray, np.ndarray]:
     """
