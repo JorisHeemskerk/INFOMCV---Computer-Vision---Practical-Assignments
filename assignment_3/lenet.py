@@ -20,15 +20,18 @@ class LeNet5(nn.Module):
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
             nn.Conv2d(16, 120, 5),
-            nn.ReLU(),
-            nn.Linear(120, 84),
             nn.ReLU()
+            
         )
         # self.conv1 = nn.Conv2d(3, 6, 5, padding=2)
         # self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)
         # self.conv3 = nn.Conv2d(6, 16, 5, padding=2)
         # self.pool4 = nn.MaxPool2d(kernel_size=2, stride=2)
         # self.conv5 = nn.Conv2d(16, 120, 5, padding=2)
+        self.fc = nn.Sequential(
+            nn.Linear(120, 84),
+            nn.ReLU()
+        )
 
         self.head = nn.Sequential(
             nn.Linear(84, 10)
@@ -45,6 +48,8 @@ class LeNet5(nn.Module):
         :return: Input tensor of shape (batch_size, 3, 32, 32).
         """
         x = self.embedding(x)
+        x = torch.flatten(x)
+        x = self.fc(x)
         x = self.head(x)
         return F.softmax(x, dim=1)
     
