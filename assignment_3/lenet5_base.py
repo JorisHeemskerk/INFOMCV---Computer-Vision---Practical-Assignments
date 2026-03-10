@@ -40,7 +40,7 @@ class LeNet5Base(nn.Module):
         """
         for module in self.modules():
             if isinstance(module, (nn.Conv2d, nn.Linear)):
-                nn.init.kaiming_uniform(module.weight)
+                nn.init.kaiming_uniform(module.weight, nonlinearity="relu")
 
     def forward(self, x: torch.Tensor)-> torch.Tensor:
         """
