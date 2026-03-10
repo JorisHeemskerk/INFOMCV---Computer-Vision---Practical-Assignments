@@ -16,10 +16,10 @@ class LeNet5(nn.Module):
             nn.Conv2d(3, 6, 5),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
-            nn.Conv2d(6, 14, 5),
+            nn.Conv2d(6, 16, 5),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
-            nn.Conv2d(14, 120, 5),
+            nn.Conv2d(16, 120, 5),
             nn.ReLU(),
             nn.Linear(120, 84),
             nn.ReLU()
