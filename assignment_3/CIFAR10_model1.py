@@ -10,4 +10,4 @@ class CIFAR10_model1(LeNet5):
         self.embedding.insert(0, nn.Conv2d(3, 12, 5))
 
         self.embedding.pop(1)
-        self.embedding.insert(1, nn.Conv2d(12, 14, 5))
+        self.embedding.insert(1, nn.Conv2d(12, 16, 5))
