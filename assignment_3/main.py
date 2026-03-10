@@ -42,7 +42,8 @@ def main()-> None:
     #                          Load the model.                         #
     ####################################################################
     model = LeNet5Base()
-    # model = LeNet5MoreFeatureKernels(32)
+    model.initialize_weights()
+    exit()
 
     model = model.to(DEVICE)
     ####################################################################
