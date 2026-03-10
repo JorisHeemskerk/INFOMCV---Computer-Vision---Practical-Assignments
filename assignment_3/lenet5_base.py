@@ -3,7 +3,7 @@ from torch import nn
 import torch.nn.functional as F
 
 
-class LeNet5(nn.Module):
+class LeNet5Base(nn.Module):
     """
     The LeNet-5 model architecture but for color images.
     """
@@ -11,7 +11,7 @@ class LeNet5(nn.Module):
         """
         Define the convolutional, pooling and fully connected layers.
         """
-        super(LeNet5, self).__init__()
+        super(LeNet5Base, self).__init__()
         self.embedding = nn.Sequential(
             nn.Conv2d(3, 6, 5),
             nn.ReLU(),
