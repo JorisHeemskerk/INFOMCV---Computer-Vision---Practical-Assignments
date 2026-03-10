@@ -267,7 +267,7 @@ def embed_data(
     :param dataloader: The dataset to embed.
     :type dataloader: DataLoader
     :param model: Model to use for embedding.
-    :type model: LeNet5
+    :type model: LeNet5Base
     :param device: On which device to embed the data.
     :type device: str 
     :returns: The embeddings and labels.

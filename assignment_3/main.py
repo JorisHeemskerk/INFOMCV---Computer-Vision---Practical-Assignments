@@ -41,8 +41,8 @@ def main()-> None:
     ####################################################################
     #                          Load the model.                         #
     ####################################################################
-    model = LeNet5Base()
-    # model = LeNet5MoreFeatureKernels(32)
+    # model = LeNet5Base()
+    model = LeNet5MoreFeatureKernels(32)
 
     model = model.to(DEVICE)
     ####################################################################
@@ -121,10 +121,10 @@ def main()-> None:
     ####################################################################
     #                   Perform t-SNE on test data.                    #
     ####################################################################
-    perform_tSNE(
-        *embed_data(test_dataloader, model, DEVICE), 
-        test_dataset.classes
-    )
+    # perform_tSNE(
+    #     *embed_data(test_dataloader, model, DEVICE), 
+    #     test_dataset.classes
+    # )
 
 if __name__ == "__main__":
     import time

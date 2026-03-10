@@ -23,5 +23,5 @@ class LeNet5MoreFeatureKernels(LeNet5Base):
         self.embedding.pop(0)
         self.embedding.insert(0, nn.Conv2d(3, n_first_layer_kernels, 5))
 
-        self.embedding.pop(1)
-        self.embedding.insert(1, nn.Conv2d(n_first_layer_kernels, 16, 5))
+        self.embedding.pop(3)
+        self.embedding.insert(3, nn.Conv2d(n_first_layer_kernels, 16, 5))
