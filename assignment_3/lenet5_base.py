@@ -7,9 +7,12 @@ class LeNet5Base(nn.Module):
     """
     The LeNet-5 model architecture but for color images.
     """
-    def __init__(self)-> None:
+    def __init__(self, n_classes: int)-> None:
         """
         Define the convolutional, pooling and fully connected layers.
+
+        :param n_classes: Number of output classes
+        :type: n_classes: int
         """
         super(LeNet5Base, self).__init__()
         self.embedding = nn.Sequential(
@@ -29,7 +32,7 @@ class LeNet5Base(nn.Module):
         )
 
         self.head = nn.Sequential(
-            nn.Linear(84, 10)
+            nn.Linear(84, n_classes)
         )
 
     def forward(self, x: torch.Tensor)-> torch.Tensor:
@@ -57,3 +60,15 @@ class LeNet5Base(nn.Module):
         x = self.embedding(x)
         x = torch.flatten(x, 1)
         return self.fully_connected(x)
+
+    def save(self, dir: str)-> None:
+        """
+        Save internal state to file.
+
+        :param dir: Directory to output model to.
+        :type dir: str
+        """
+        filename = f"{dir}/best_{self.__class__.__name__}.pth"
+        print(f"\033[36mSaving model...\033[37m")
+        torch.save(self, filename)
+
