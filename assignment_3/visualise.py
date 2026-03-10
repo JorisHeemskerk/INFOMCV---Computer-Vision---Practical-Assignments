@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from sklearn.manifold import TSNE
+from torch.utils.data import Dataset
 from typing import Any
 
 
