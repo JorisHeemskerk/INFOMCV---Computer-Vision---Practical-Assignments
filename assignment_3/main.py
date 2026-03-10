@@ -42,6 +42,7 @@ def main()-> None:
     #                          Load the model.                         #
     ####################################################################
     model = LeNet5Base()
+    print("HIERO")
     model.initialize_weights()
     exit()
 
