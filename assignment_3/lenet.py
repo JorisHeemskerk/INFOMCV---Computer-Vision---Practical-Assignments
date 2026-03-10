@@ -31,8 +31,7 @@ class LeNet5(nn.Module):
         # self.conv5 = nn.Conv2d(16, 120, 5, padding=2)
 
         self.head = nn.Sequential(
-            nn.Linear(84, 10),
-            F.softmax(dim=1)
+            nn.Linear(84, 10)
         )
         # self.fc6 = nn.Linear(7680, 84)
         # self.fc7 = nn.Linear(84, 10)
@@ -47,7 +46,7 @@ class LeNet5(nn.Module):
         """
         x = self.embedding(x)
         x = self.head(x)
-        return x
+        return F.softmax(x, dim=1)
     
     # def embed(self, x: torch.Tensor):
     #     """
