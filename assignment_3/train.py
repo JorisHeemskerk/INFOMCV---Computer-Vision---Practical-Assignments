@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader, Dataset, Subset
 from typing import Callable
 from tqdm import tqdm
 
-from lenet import LeNet5
+from lenet5_base import LeNet5
 
 
 def train_cross_validation(
