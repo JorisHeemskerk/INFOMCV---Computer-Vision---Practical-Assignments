@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+import torch.nn.functional as F
 
 
 class LeNet5(nn.Module):
@@ -31,7 +32,7 @@ class LeNet5(nn.Module):
 
         self.head = nn.Sequential(
             nn.Linear(84, 10),
-            nn.softmax(dim=1)
+            F.softmax(dim=1)
         )
         # self.fc6 = nn.Linear(7680, 84)
         # self.fc7 = nn.Linear(84, 10)
