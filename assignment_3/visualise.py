@@ -147,7 +147,7 @@ def perform_tSNE(
     label_to_color = {label: cmap(i) for i, label in enumerate(unique_labels)}
     colors = [label_to_color[label] for label in labels]
 
-    plt.figure(figsize=(100, 100))
+    plt.figure(figsize=(20, 20))
     x, y = zip(*reduced)
     plt.scatter(x, y, c=colors, alpha=.5)
 
