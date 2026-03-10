@@ -7,7 +7,7 @@ from torch.utils.data import ConcatDataset
 
 from data import load_datasets, to_dataloaders
 from train import train, train_cross_validation, embed_data
-from lenet import LeNet5
+from lenet5_base import LeNet5Base
 from visualise import visualise_all_classes, visualise_training, perform_tSNE
 
 
