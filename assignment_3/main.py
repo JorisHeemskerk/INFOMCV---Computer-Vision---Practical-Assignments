@@ -7,7 +7,8 @@ from torch.utils.data import ConcatDataset
 
 from data import load_datasets, to_dataloaders
 from train import train, train_cross_validation, embed_data
-from lenet import LeNet5
+from lenet5_base import LeNet5Base
+from lenet5_more_feature_kernels import LeNet5MoreFeatureKernels
 from visualise import visualise_all_classes, visualise_training, perform_tSNE
 
 
@@ -40,9 +41,8 @@ def main()-> None:
     ####################################################################
     #                          Load the model.                         #
     ####################################################################
-    lenet_5 = LeNet5()
-
-    model = lenet_5
+    # model = LeNet5Base()
+    model = LeNet5MoreFeatureKernels(32)
 
     model = model.to(DEVICE)
     ####################################################################
