@@ -38,7 +38,7 @@ class LeNet5Base(nn.Module):
         function should be called manually after creating a class
         instance.
         """
-        for module in self.children():
+        for module in self.modules():
             print(module)
 
     def forward(self, x: torch.Tensor)-> torch.Tensor:
