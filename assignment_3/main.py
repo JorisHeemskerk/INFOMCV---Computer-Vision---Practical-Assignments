@@ -8,6 +8,7 @@ from torch.utils.data import ConcatDataset
 from data import load_datasets, to_dataloaders
 from train import train, train_cross_validation, embed_data
 from lenet import LeNet5
+from CIFAR10_model1 import CIFAR10_model1
 from visualise import visualise_all_classes, visualise_training, perform_tSNE
 
 
@@ -41,9 +42,9 @@ def main()-> None:
     #                          Load the model.                         #
     ####################################################################
     lenet_5 = LeNet5()
-    print(lenet_5)
+    model = CIFAR10_model1()
 
-    model = lenet_5
+    # model = lenet_5
 
     model = model.to(DEVICE)
     ####################################################################
