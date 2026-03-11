@@ -9,6 +9,7 @@ from data import load_datasets, to_dataloaders
 from train import train, train_cross_validation, embed_data
 from lenet5_base import LeNet5Base
 from lenet5_more_feature_kernels import LeNet5MoreFeatureKernels
+from lenet5_extra_conv_layer import LeNet5ExtraConvLayer
 from visualise import visualise_all_classes, visualise_training, perform_tSNE
 
 
@@ -41,10 +42,11 @@ def main()-> None:
     ####################################################################
     #                          Load the model.                         #
     ####################################################################
-    model = LeNet5Base()
+    model = LeNet5ExtraConvLayer()
+    print(model)
+    exit()
 
     model.initialize_weights()
-    exit()
     model = model.to(DEVICE)
     ####################################################################
     #                     Set the hyperparemeters.                     #
