@@ -8,7 +8,12 @@ class LeNet5ExtraConvLayer(LeNet5MoreFeatureKernels):
     Overridden version of the LeNet-5 base model, where there is an
     extra 1x1 layer added before the last conv layer.
     """
-    def __init__(self, n_channels: int):
+    def __init__(
+        self,
+        n_classes: int,
+        n_first_layer_kernels: int,
+        n_channels: int
+    ):
         """
         Constructs a `LetNet5Base` model, then replaces the first 
         convolutional layer to have a different number of kernels.
@@ -19,7 +24,7 @@ class LeNet5ExtraConvLayer(LeNet5MoreFeatureKernels):
         """
         assert n_channels > 0, \
             "Cannot have negative number of channels!"
-        super().__init__()
+        super().__init__(n_classes, n_first_layer_kernels)
         self.embedding.insert(6, nn.Conv2d(16, n_channels, 1))
         self.embedding.insert(7, nn.ReLU())
 

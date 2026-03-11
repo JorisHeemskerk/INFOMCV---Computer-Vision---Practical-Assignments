@@ -45,11 +45,16 @@ def main()-> None:
     #                          Load the model.                         #
     ####################################################################
     N_CLASSES = len(test_dataset.classes)
-    model = LeNet5Base(n_classes=N_CLASSES)
+    # model = LeNet5Base(n_classes=N_CLASSES)
     # model = LeNet5MoreFeatureKernels(
     #     n_classes=N_CLASSES, 
     #     n_first_layer_kernels=32
     # )
+    model = LeNet5ExtraConvLayer(
+        n_classes=N_CLASSES, 
+        n_first_layer_kernels=32,
+        n_channels=32
+    )
 
     model.initialize_weights()
     model = model.to(DEVICE)
