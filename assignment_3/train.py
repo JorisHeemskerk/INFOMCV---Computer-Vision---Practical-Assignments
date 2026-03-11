@@ -96,7 +96,7 @@ def train_cross_validation(
         if (
             max(val_accuracies) if len(val_accuracies) > 0 else -1
         ) > \
-        max(np.array(val_accuraciess)) if val_accuraciess.shape[0] > 0 else -2:
+        max(np.array(val_accuraciess)) if len(val_accuraciess) > 0 else -2:
             best = copy.deepcopy(model.state_dict())
         train_lossess.append(train_losses)
         train_accuraciess.append(train_accuracies)
