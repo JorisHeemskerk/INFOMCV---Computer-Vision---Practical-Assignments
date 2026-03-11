@@ -141,10 +141,10 @@ def main()-> None:
     ####################################################################
     #                   Perform t-SNE on test data.                    #
     ####################################################################
-    # perform_tSNE(
-    #     *embed_data(test_dataloader, model, DEVICE), 
-    #     test_dataset.classes
-    # )
+    perform_tSNE(
+        *embed_data(test_dataloader, model, DEVICE), 
+        test_dataset.classes
+    )
 
 if __name__ == "__main__":
     import time
