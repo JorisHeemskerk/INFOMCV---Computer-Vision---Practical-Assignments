@@ -15,9 +15,11 @@ class LeNet5ExtraConvLayer(LeNet5MoreFeatureKernels):
         n_channels: int
     ):
         """
-        Constructs a `LetNet5Base` model, then replaces the first 
-        convolutional layer to have a different number of kernels.
+        Constructs a `LeNet5MoreFeatureKernels` model, then adds a
+        convolutional layer before the last convolutional layer.
 
+        :param n_classes: Number of output classes
+        :type: n_classes: int
         :param n_first_layer_kernels: Number of kernels in the first 
             layer.
         :type n_first_layer_kernels: int

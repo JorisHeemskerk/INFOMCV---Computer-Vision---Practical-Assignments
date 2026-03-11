@@ -55,6 +55,8 @@ def main()-> None:
         n_first_layer_kernels=32,
         n_channels=32
     )
+    print(model)
+    exit()
 
     model.initialize_weights()
     model = model.to(DEVICE)
