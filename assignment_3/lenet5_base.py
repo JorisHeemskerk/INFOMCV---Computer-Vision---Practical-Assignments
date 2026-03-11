@@ -43,6 +43,7 @@ class LeNet5Base(nn.Module):
                 nn.init.kaiming_uniform(module.weight, nonlinearity="relu")
                 nn.init.zeros_(module.bias)
                 print(f"{module}")
+                print(f"{module.weight = }")
 
     def forward(self, x: torch.Tensor)-> torch.Tensor:
         """
