@@ -44,6 +44,7 @@ def main()-> None:
     model = LeNet5Base()
 
     model.initialize_weights()
+    exit()
     model = model.to(DEVICE)
     ####################################################################
     #                     Set the hyperparemeters.                     #
