@@ -23,7 +23,7 @@ def main()-> None:
     ####################################################################
     #                          Load the data.                          #
     ####################################################################
-    DATASET = datasets.CIFAR100
+    DATASET = datasets.CIFAR10
 
     train_dataset, val_dataset, test_dataset = load_datasets(
         dataset=DATASET, 
