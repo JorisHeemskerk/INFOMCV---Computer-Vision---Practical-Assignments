@@ -23,8 +23,10 @@ def main()-> None:
     ####################################################################
     #                          Load the data.                          #
     ####################################################################
+    DATASET = datasets.CIFAR100
+
     train_dataset, val_dataset, test_dataset = load_datasets(
-        dataset=datasets.CIFAR10, 
+        dataset=DATASET, 
         root="assignment_3/data/", 
         train_val_partition=(.8, .2)
     )
@@ -42,9 +44,12 @@ def main()-> None:
     ####################################################################
     #                          Load the model.                         #
     ####################################################################
-    model = LeNet5ExtraConvLayer()
-    print(model)
-    exit()
+    N_CLASSES = len(test_dataset.classes)
+    model = LeNet5Base(n_classes=N_CLASSES)
+    # model = LeNet5MoreFeatureKernels(
+    #     n_classes=N_CLASSES, 
+    #     n_first_layer_kernels=32
+    # )
 
     model.initialize_weights()
     model = model.to(DEVICE)
@@ -68,22 +73,22 @@ def main()-> None:
     ####################################################################
     if K_FOLDS is None:
         # Train it the normal way.
-        train_losses, train_accuracies, val_losses, val_accuracies = train(
-            train_dataloader=train_dataloader, 
-            val_dataloader=val_dataloader,
-            model=model,
-            loss_fn=LOSS_FN,
-            optimiser=OPTIMISER,
-            scheduler=SCHEDULER,
-            n_epochs=N_EPOCHS,
-            device=DEVICE,
-            save_final_dir="assignment_3/model_cache"
-        )
+        train_losses, train_accuracies, val_losses, val_accuracies, model = \
+            train(
+                train_dataloader=train_dataloader, 
+                val_dataloader=val_dataloader,
+                model=model,
+                loss_fn=LOSS_FN,
+                optimiser=OPTIMISER,
+                scheduler=SCHEDULER,
+                n_epochs=N_EPOCHS,
+                device=DEVICE,
+            )
         train_losses_std, train_accuracies_std = None, None
         val_losses_std, val_accuracies_std = None, None
     else:
         # Use k-fold cross validation
-        train_lossess, train_accuraciess, val_lossess, val_accuraciess = \
+        train_lossess, train_accuraciess, val_lossess, val_accuraciess, model=\
             train_cross_validation(
                 full_train_dataset=all_train_dataset, 
                 k_folds=5,
@@ -98,7 +103,6 @@ def main()-> None:
                 scheduler=SCHEDULER,
                 n_epochs=N_EPOCHS,
                 device=DEVICE,
-                save_final_dir="assignment_3/model_cache"
             )
         train_losses = np.mean(train_lossess, axis=0)
         train_losses_std  = np.std(train_lossess, axis=0)
@@ -110,7 +114,15 @@ def main()-> None:
         val_losses_std  = np.std(val_lossess, axis=0)
         
         val_accuracies = np.mean(val_accuraciess, axis=0)
-        val_accuracies_std  = np.std(val_accuracies, axis=0)
+        val_accuracies_std  = np.std(val_accuracies, axis=0)\
+
+    print(
+        f"\033[32mBest validation accuracy: {max(val_accuracies)}, achieved "
+        f"during epoch {np.argmax(val_accuracies) + 1}.\033[37m"
+    )
+    
+    model.save("assignment_3/model_cache")
+
     visualise_training(
         train_losses, 
         train_accuracies, 
@@ -124,10 +136,10 @@ def main()-> None:
     ####################################################################
     #                   Perform t-SNE on test data.                    #
     ####################################################################
-    perform_tSNE(
-        *embed_data(test_dataloader, model, DEVICE), 
-        test_dataset.classes
-    )
+    # perform_tSNE(
+    #     *embed_data(test_dataloader, model, DEVICE), 
+    #     test_dataset.classes
+    # )
 
 if __name__ == "__main__":
     import time

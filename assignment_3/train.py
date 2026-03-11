@@ -20,7 +20,6 @@ def train_cross_validation(
     scheduler: torch.optim.lr_scheduler.LRScheduler | None,
     n_epochs: int,
     device: str,
-    save_final_dir: str | None=None
 )-> tuple[list[float], list[float], list[float], list[float]]:
     """
     Train a model for `n_epochs` epochs using k-fold cross validation.
@@ -39,14 +38,19 @@ def train_cross_validation(
     :type scheduler: torch.optim.lr_scheduler.LRScheduler | None
     :param n_epochs: Number of epochs to train for.
     :type n_epochs: int
-    :param save_final_dir: Path to save final model to. (DEFAULT=None)
-    :type save_final_dir: str | None
     :param device: Device to move data to.
     :type device: str
     :return: Per epoch train losses, accuracies and validation losses 
-        and accuracies.
-    :rtype: tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
+        and accuracies. Along with model with the best val accuracy.
+    :rtype: tuple[
+        np.ndarray, 
+        np.ndarray, 
+        np.ndarray, 
+        np.ndarray, 
+        nn.Module
+    ]
     """
+    best = None
     train_lossess, train_accuraciess, val_lossess, val_accuraciess = \
         [], [], [], []
 
@@ -78,27 +82,33 @@ def train_cross_validation(
         train_dataloader = dataset_to_dataloader_function(train_dataset)[0]
         val_dataloader = dataset_to_dataloader_function(val_dataset)[0]
 
-        train_losses, train_accuracies, val_losses, val_accuracies = train(
-            train_dataloader=train_dataloader, 
-            val_dataloader=val_dataloader,
-            model=model,
-            loss_fn=loss_fn,
-            optimiser=optimiser,
-            scheduler=scheduler,
-            n_epochs=n_epochs,
-            device=device,
-            save_final_dir=save_final_dir
-        )
+        train_losses, train_accuracies, val_losses, val_accuracies, best = \
+            train(
+                train_dataloader=train_dataloader, 
+                val_dataloader=val_dataloader,
+                model=model,
+                loss_fn=loss_fn,
+                optimiser=optimiser,
+                scheduler=scheduler,
+                n_epochs=n_epochs,
+                device=device,
+            )
+        if (
+            max(val_accuracies) if len(val_accuracies) > 0 else -1
+        ) > max(np.array(val_accuraciess)):
+            best = copy.deepcopy(model.state_dict())
         train_lossess.append(train_losses)
         train_accuraciess.append(train_accuracies)
         val_lossess.append(val_losses)
         val_accuraciess.append(val_accuracies)
 
+    model.load_state_dict(best)
     return \
         np.array(train_lossess), \
         np.array(train_accuraciess), \
         np.array(val_lossess), \
-        np.array(val_accuraciess)
+        np.array(val_accuraciess), \
+        model
 
 def train(
     train_dataloader: DataLoader, 
@@ -109,7 +119,6 @@ def train(
     scheduler: torch.optim.lr_scheduler.LRScheduler | None,
     n_epochs: int,
     device: str,
-    save_final_dir: str | None=None
 )-> tuple[list[float], list[float], list[float], list[float]]:
     """
     Train a model for `n_epochs` epochs.
@@ -128,14 +137,19 @@ def train(
     :type scheduler: torch.optim.lr_scheduler.LRScheduler | None
     :param n_epochs: Number of epochs to train for.
     :type n_epochs: int
-    :param save_final_dir: Path to save final model to. (DEFAULT=None)
-    :type save_final_dir: str | None
     :param device: Device to move data to.
     :type device: str
     :return: Per epoch train losses, accuracies and validation losses 
-        and accuracies.
-    :rtype: tuple[list[float], list[float], list[float], list[float]]
+        and accuracies. Along with model with the best val accuracy.
+    :rtype: tuple[
+        list[float], 
+        list[float], 
+        list[float], 
+        list[float], 
+        nn.Module
+    ]
     """
+    best = None
     train_losses, train_accuracies, val_losses, val_accuracies = [], [], [], []
     for _ in tqdm(range(n_epochs), "\033[33mEpoch"):
         print("\033[37m") # Reset colour.
@@ -155,21 +169,18 @@ def train(
             loss_fn, 
             device
         )
+
+        if val_accuracy > (
+            max(val_accuracies) if len(val_accuracies) > 0 else -1
+        ):
+            best = copy.deepcopy(model.state_dict())
         val_losses.append(val_loss)
         val_accuracies.append(val_accuracy)
         if scheduler is not None:
             scheduler.step()
     print("\033[1;32mDone training\033[0;37m")
-
-    if save_final_dir is not None:
-        filename = f"{model.__class__.__name__}.pth"
-        print(
-            f"\033[36mSaving final model to {save_final_dir}/{filename}"
-            "\033[37m"
-        )
-        torch.save(model, f"{save_final_dir}/{filename}")
-
-    return train_losses, train_accuracies, val_losses, val_accuracies
+    model.load_state_dict(best)
+    return train_losses, train_accuracies, val_losses, val_accuracies, model
 
 def train_epoch(
     dataloader: DataLoader, 
@@ -267,7 +278,7 @@ def embed_data(
     :param dataloader: The dataset to embed.
     :type dataloader: DataLoader
     :param model: Model to use for embedding.
-    :type model: LeNet5
+    :type model: LeNet5Base
     :param device: On which device to embed the data.
     :type device: str 
     :returns: The embeddings and labels.
