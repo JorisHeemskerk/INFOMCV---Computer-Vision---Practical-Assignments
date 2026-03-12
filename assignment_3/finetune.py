@@ -47,6 +47,8 @@ def finetune_cifar10(
     nn.init.kaiming_uniform(model.head[-1].weight, nonlinearity="relu")
     nn.init.zeros_(model.head[-1].bias)
 
+    model = model.to(device)
+
     OPTIMISER = torch.optim.Adam(params=model.parameters(), lr=learning_rate/2)
     SCHEDULER = None
     # SCHEDULER = torch.optim.lr_scheduler.StepLR(
