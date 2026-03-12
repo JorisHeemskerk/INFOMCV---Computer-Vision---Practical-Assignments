@@ -6,7 +6,7 @@ from torchvision import datasets
 from torch.utils.data import ConcatDataset
 
 from data import load_datasets, to_dataloaders
-from train import train, train_cross_validation, embed_data
+from train import train, train_cross_validation, embed_data, finetune_cifar10
 from lenet5_base import LeNet5Base
 from lenet5_more_feature_kernels import LeNet5MoreFeatureKernels
 from lenet5_extra_conv_layer import LeNet5ExtraConvLayer
@@ -120,6 +120,11 @@ def main()-> None:
         
         val_accuracies = np.mean(val_accuraciess, axis=0)
         val_accuracies_std  = np.std(val_accuracies, axis=0)\
+
+    if DATASET == datasets.CIFAR100:
+        finetune_cifar10(
+            model
+        )
 
     print(
         f"\033[32mBest validation accuracy: {max(val_accuracies)}, achieved "
