@@ -46,23 +46,24 @@ def main()-> None:
     #                          Load the model.                         #
     ####################################################################
     N_CLASSES = len(test_dataset.classes)
-    # model = LeNet5Base(n_classes=N_CLASSES)
+    model = LeNet5Base(n_classes=N_CLASSES)
     # model = LeNet5MoreFeatureKernels(
     #     n_classes=N_CLASSES, 
     #     n_first_layer_kernels=32
     # )
-    model = LeNet5ExtraConvLayer(
-        n_classes=N_CLASSES, 
-        n_first_layer_kernels=32,
-        n_channels=32
-    )
+    # model = LeNet5ExtraConvLayer(
+    #     n_classes=N_CLASSES, 
+    #     n_first_layer_kernels=32,
+    #     n_channels=32
+    # )
 
     model.initialize_weights()
     model = model.to(DEVICE)
+    print(model)
     ####################################################################
     #                     Set the hyperparemeters.                     #
     ####################################################################
-    N_EPOCHS = 2
+    N_EPOCHS = 50
     LEARNING_RATE = 0.001
     K_FOLDS: int | None = None
 
@@ -135,8 +136,10 @@ def main()-> None:
         )
 
     print(
-        f"\033[32mBest validation accuracy: {max(val_accuracies)}, achieved "
-        f"during epoch {np.argmax(val_accuracies) + 1}.\033[37m"
+        f"\033[32mBest  training  accuracy: {max(train_accuracies)}, achieved "
+        f"during epoch {np.argmax(train_accuracies) + 1}.\nBest validation "
+        f"accuracy: {max(val_accuracies)}, achieved during epoch "
+        f"{np.argmax(val_accuracies) + 1}.\033[37m"
     )
     
     model.save("assignment_3/model_cache")
@@ -149,7 +152,8 @@ def main()-> None:
         train_losses_std, 
         train_accuracies_std,
         val_losses_std, 
-        val_accuracies_std
+        val_accuracies_std,
+        model_name=model.__class__.__name__
     )
     ####################################################################
     #                   Perform t-SNE on test data.                    #
