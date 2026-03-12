@@ -1,16 +1,25 @@
+import torch
+
 from torch import nn
 from torchvision import datasets
 from torch.utils.data import ConcatDataset
 
 
 from data import load_datasets, to_dataloaders
-
 from lenet5_base import LeNet5Base
 
 
 def finetune_cifar10(
     model: LeNet5Base,
 ):
+    """
+    Finetune a model on the cifar 10 dataset.
+
+    Change the outpt size of the given model to match the amount of
+    classes in the cifar 10 dataset. Then train this model on the 
+    cifar 10 dataset with the learning rate halved from what it was
+    during pre-training
+    """
     train_dataset, val_dataset, test_dataset = load_datasets(
         dataset=datasets.CIFAR10, 
         root="assignment_3/data/", 
@@ -18,7 +27,6 @@ def finetune_cifar10(
     )
 
     all_train_dataset = ConcatDataset([train_dataset, val_dataset])
-    # visualise_all_classes(train_dataset, test_dataset.classes)
 
     BATCH_SIZE = 32
     train_dataloader, val_dataloader, all_train_dataloader, test_dataloader = \
@@ -34,4 +42,5 @@ def finetune_cifar10(
     model.head[-1] = nn.Linear(in_features, N_CLASSES)
     print(model)
 
-    
+    OPTIMISER = torch.optim.Adam(params=model.parameters(), lr=LEARNING_RATE)
+    SCHEDULER = None

@@ -6,11 +6,12 @@ from torchvision import datasets
 from torch.utils.data import ConcatDataset
 
 from data import load_datasets, to_dataloaders
-from train import train, train_cross_validation, embed_data, finetune_cifar10
+from train import train, train_cross_validation, embed_data
 from lenet5_base import LeNet5Base
 from lenet5_more_feature_kernels import LeNet5MoreFeatureKernels
 from lenet5_extra_conv_layer import LeNet5ExtraConvLayer
 from visualise import visualise_all_classes, visualise_training, perform_tSNE
+from finetune import finetune_cifar10
 
 
 torch.manual_seed(42)
@@ -146,10 +147,10 @@ def main()-> None:
     ####################################################################
     #                   Perform t-SNE on test data.                    #
     ####################################################################
-    perform_tSNE(
-        *embed_data(test_dataloader, model, DEVICE), 
-        test_dataset.classes
-    )
+    # perform_tSNE(
+    #     *embed_data(test_dataloader, model, DEVICE), 
+    #     test_dataset.classes
+    # )
 
 if __name__ == "__main__":
     import time
