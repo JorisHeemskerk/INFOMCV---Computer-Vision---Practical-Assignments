@@ -17,7 +17,7 @@ def finetune_cifar10(
     learning_rate: float,
     k_folds: int,
     device: str,
-    scheduler: Any | None
+    scheduler: torch.optim.lr_scheduler.LRScheduler | None
 ):
     """
     Finetune a model on the cifar 10 dataset.
