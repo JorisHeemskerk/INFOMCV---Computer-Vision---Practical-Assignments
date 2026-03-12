@@ -11,6 +11,7 @@ from lenet5_base import LeNet5Base
 from lenet5_more_feature_kernels import LeNet5MoreFeatureKernels
 from lenet5_extra_conv_layer import LeNet5ExtraConvLayer
 from visualise import visualise_all_classes, visualise_training, perform_tSNE
+from finetune import finetune_cifar10
 
 
 torch.manual_seed(42)
@@ -23,7 +24,7 @@ def main()-> None:
     ####################################################################
     #                          Load the data.                          #
     ####################################################################
-    DATASET = datasets.CIFAR10
+    DATASET = datasets.CIFAR100
 
     train_dataset, val_dataset, test_dataset = load_datasets(
         dataset=DATASET, 
@@ -121,6 +122,18 @@ def main()-> None:
         
         val_accuracies = np.mean(val_accuraciess, axis=0)
         val_accuracies_std  = np.std(val_accuracies, axis=0)\
+
+    if DATASET == datasets.CIFAR100:
+        model, train_losses, train_accuracies, val_losses, val_accuracies, \
+        train_losses_std, train_accuracies_std, val_losses_std, \
+        val_accuracies_std = finetune_cifar10(
+            model,
+            BATCH_SIZE,
+            N_EPOCHS,
+            LEARNING_RATE,
+            K_FOLDS,
+            DEVICE
+        )
 
     print(
         f"\033[32mBest  training  accuracy: {max(train_accuracies)}, achieved "
