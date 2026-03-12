@@ -123,8 +123,15 @@ def main()-> None:
         val_accuracies_std  = np.std(val_accuracies, axis=0)\
 
     if DATASET == datasets.CIFAR100:
-        finetune_cifar10(
-            model
+        model, train_losses, train_accuracies, val_losses, val_accuracies, \
+        train_losses_std, train_accuracies_std, val_losses_std, \
+        val_accuracies_std = finetune_cifar10(
+            model,
+            BATCH_SIZE,
+            N_EPOCHS,
+            LEARNING_RATE,
+            K_FOLDS,
+            DEVICE
         )
 
     print(
