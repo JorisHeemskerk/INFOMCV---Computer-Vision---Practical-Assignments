@@ -51,6 +51,7 @@ def visualise_training(
         train_accuracies_std: list[float] | None = None,
         val_losses_std: list[float] | None = None,
         val_accuracies_std: list[float] | None = None,
+        model_name: str="Not specified"
     )-> None:
     """
     Visualise both the loss and accuracy over the epochs, with optional
@@ -76,6 +77,8 @@ def visualise_training(
     :param val_accuracies_std: Std of accuracy values during validation. 
         (DEFAULT=None)
     :type val_accuracies_std: list[float] | None
+    :param model_name: Name of the model used for top header title.
+    :type model_name: str
     """
     fig, ax = plt.subplots(nrows=1, ncols=2)
     epochs = range(len(train_losses))
@@ -115,6 +118,7 @@ def visualise_training(
     ax[1].set_ylabel("Accuracy")
     ax[0].legend()
     ax[1].legend()
+    fig.suptitle(f"Model: {model_name}")
     plt.tight_layout()
     plt.savefig('assignment_3/results.png')
     plt.show()
