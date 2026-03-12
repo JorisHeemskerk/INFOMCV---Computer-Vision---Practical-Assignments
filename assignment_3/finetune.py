@@ -18,7 +18,10 @@ def finetune_cifar10(
     k_folds: int,
     device: str,
     scheduler: torch.optim.lr_scheduler.LRScheduler | None
-):
+)-> tuple[
+    LeNet5Base,
+    
+]:
     """
     Finetune a model on the cifar 10 dataset.
 
@@ -27,7 +30,20 @@ def finetune_cifar10(
     cifar 10 dataset with the learning rate halved from what it was
     during pre-training.
 
-
+    :param model:
+    :type model:
+    :param batch_size:
+    :type batch_size:
+    :param epochs:
+    :type epochs:
+    :param learning_rate:
+    :type learning_rate:
+    :param k_folds:
+    :type k_folds:
+    :param device:
+    :type device:
+    :param scheduler:
+    :type scheduler:
     """
     train_dataset, val_dataset, test_dataset = load_datasets(
         dataset=datasets.CIFAR10, 
