@@ -9,6 +9,7 @@ from data import load_datasets, to_dataloaders
 from train import train, train_cross_validation, embed_data
 from lenet5_base import LeNet5Base
 from lenet5_more_feature_kernels import LeNet5MoreFeatureKernels
+from lenet5_extra_conv_layer import LeNet5ExtraConvLayer
 from visualise import visualise_all_classes, visualise_training, perform_tSNE
 
 
@@ -22,7 +23,7 @@ def main()-> None:
     ####################################################################
     #                          Load the data.                          #
     ####################################################################
-    DATASET = datasets.CIFAR100
+    DATASET = datasets.CIFAR10
 
     train_dataset, val_dataset, test_dataset = load_datasets(
         dataset=DATASET, 
@@ -44,19 +45,25 @@ def main()-> None:
     #                          Load the model.                         #
     ####################################################################
     N_CLASSES = len(test_dataset.classes)
-    model = LeNet5Base(n_classes=N_CLASSES)
+    # model = LeNet5Base(n_classes=N_CLASSES)
     # model = LeNet5MoreFeatureKernels(
     #     n_classes=N_CLASSES, 
     #     n_first_layer_kernels=32
     # )
+    model = LeNet5ExtraConvLayer(
+        n_classes=N_CLASSES, 
+        n_first_layer_kernels=32,
+        n_channels=32
+    )
 
+    model.initialize_weights()
     model = model.to(DEVICE)
     ####################################################################
     #                     Set the hyperparemeters.                     #
     ####################################################################
     N_EPOCHS = 5
     LEARNING_RATE = 0.001
-    K_FOLDS: int | None = None
+    K_FOLDS: int | None = 5
 
     OPTIMISER = torch.optim.Adam(params=model.parameters(), lr=LEARNING_RATE)
     SCHEDULER = None
@@ -134,10 +141,10 @@ def main()-> None:
     ####################################################################
     #                   Perform t-SNE on test data.                    #
     ####################################################################
-    # perform_tSNE(
-    #     *embed_data(test_dataloader, model, DEVICE), 
-    #     test_dataset.classes
-    # )
+    perform_tSNE(
+        *embed_data(test_dataloader, model, DEVICE), 
+        test_dataset.classes
+    )
 
 if __name__ == "__main__":
     import time

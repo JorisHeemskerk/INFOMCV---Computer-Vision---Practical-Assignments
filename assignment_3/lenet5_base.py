@@ -35,6 +35,17 @@ class LeNet5Base(nn.Module):
             nn.Linear(84, n_classes)
         )
 
+    def initialize_weights(self)-> None:
+        """
+        Apply kaiming uniform initialization to all layers. This
+        function should be called manually after creating a class
+        instance.
+        """
+        for module in self.modules():
+            if isinstance(module, (nn.Conv2d, nn.Linear)):
+                nn.init.kaiming_uniform(module.weight, nonlinearity="relu")
+                nn.init.zeros_(module.bias)
+
     def forward(self, x: torch.Tensor)-> torch.Tensor:
         """
         Perform a forward pass on the network.

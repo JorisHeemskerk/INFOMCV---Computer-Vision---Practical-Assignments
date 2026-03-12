@@ -21,7 +21,7 @@ class LeNet5MoreFeatureKernels(LeNet5Base):
         """
         assert n_first_layer_kernels > 0, \
             "Cannot have negative number of kernels!"
-        super(LeNet5MoreFeatureKernels, self).__init__(n_classes)
+        super().__init__(n_classes)
         self.embedding.pop(0)
         self.embedding.insert(0, nn.Conv2d(3, n_first_layer_kernels, 5))
 
