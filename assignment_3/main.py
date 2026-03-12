@@ -62,9 +62,9 @@ def main()-> None:
     ####################################################################
     #                     Set the hyperparemeters.                     #
     ####################################################################
-    N_EPOCHS = 5
+    N_EPOCHS = 2
     LEARNING_RATE = 0.001
-    K_FOLDS: int | None = 5
+    K_FOLDS: int | None = None
 
     OPTIMISER = torch.optim.Adam(params=model.parameters(), lr=LEARNING_RATE)
     SCHEDULER = None
