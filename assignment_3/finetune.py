@@ -20,6 +20,10 @@ def finetune_cifar10(
     scheduler: torch.optim.lr_scheduler.LRScheduler | None
 )-> tuple[
     LeNet5Base,
+    torch.utils.data.dataloader.DataLoader,
+    list,
+    list,
+    list,
     
 ]:
     """

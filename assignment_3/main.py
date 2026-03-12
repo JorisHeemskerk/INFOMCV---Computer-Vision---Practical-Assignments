@@ -66,7 +66,7 @@ def main()-> None:
     ####################################################################
     N_EPOCHS = 2
     LEARNING_RATE = 0.001
-    K_FOLDS: int | None = None
+    K_FOLDS: int | None = 2
 
     OPTIMISER = torch.optim.Adam(params=model.parameters(), lr=LEARNING_RATE)
     SCHEDULER = None
