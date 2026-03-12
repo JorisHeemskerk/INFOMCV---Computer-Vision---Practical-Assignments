@@ -142,13 +142,21 @@ def main()-> None:
         print(f"{type(model) = }")
         print(f"{type(test_dataloader) = }")
         print(f"{type(train_losses) = }")
+        print(train_losses)
         print(f"{type(train_accuracies) = }")
+        print(train_accuracies)
         print(f"{type(val_losses) = }")
+        print(val_losses)
         print(f"{type(val_accuracies) = }")
+        print(val_accuracies)
         print(f"{type(train_losses_std) = }")
+        print(train_losses_std)
         print(f"{type(train_accuracies_std) = }")
+        print(train_accuracies_std)
         print(f"{type(val_losses_std) = }")
+        print(val_losses_std)
         print(f"{type(val_accuracies_std) = }")
+        print(val_accuracies_std)
 
     print(
         f"\033[32mBest  training  accuracy: {max(train_accuracies)}, achieved "
