@@ -25,6 +25,7 @@ def main()-> None:
     #                          Load the data.                          #
     ####################################################################
     DATASET = datasets.CIFAR100
+    FINETUNE = True
 
     train_dataset, val_dataset, test_dataset = load_datasets(
         dataset=DATASET, 
@@ -35,11 +36,11 @@ def main()-> None:
     # visualise_all_classes(train_dataset, test_dataset.classes)
 
     BATCH_SIZE = 32
-    train_dataloader, val_dataloader, all_train_dataloader, test_dataloader = \
+    train_dataloader, val_dataloader, test_dataloader = \
         to_dataloaders(
-            [train_dataset, val_dataset, all_train_dataset, test_dataset],
-            batch_sizes=[BATCH_SIZE] * 4,
-            shuffles=[True, True, True, False]
+            [train_dataset, val_dataset, test_dataset],
+            batch_sizes=[BATCH_SIZE] * 3,
+            shuffles=[True, True, False]
         )
 
     ####################################################################
@@ -123,16 +124,20 @@ def main()-> None:
         val_accuracies = np.mean(val_accuraciess, axis=0)
         val_accuracies_std  = np.std(val_accuracies, axis=0)\
 
-    if DATASET == datasets.CIFAR100:
-        model, train_losses, train_accuracies, val_losses, val_accuracies, \
-        train_losses_std, train_accuracies_std, val_losses_std, \
-        val_accuracies_std = finetune_cifar10(
+    if DATASET == datasets.CIFAR100 and FINETUNE:
+        OPTIMISER = torch.optim.Adam(
+            params=model.parameters(), lr=LEARNING_RATE)
+
+        model, test_dataloader, train_losses, train_accuracies, val_losses, \
+        val_accuracies, train_losses_std, train_accuracies_std, \
+        val_losses_std, val_accuracies_std = finetune_cifar10(
             model,
             BATCH_SIZE,
             N_EPOCHS,
             LEARNING_RATE,
             K_FOLDS,
-            DEVICE
+            DEVICE,
+            SCHEDULER
         )
 
     print(

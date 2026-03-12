@@ -16,7 +16,8 @@ def finetune_cifar10(
     epochs: int,
     learning_rate: float,
     k_folds: int,
-    device: str
+    device: str,
+    scheduler: Any | None
 ):
     """
     Finetune a model on the cifar 10 dataset.
@@ -24,7 +25,9 @@ def finetune_cifar10(
     Change the outpt size of the given model to match the amount of
     classes in the cifar 10 dataset. Then train this model on the 
     cifar 10 dataset with the learning rate halved from what it was
-    during pre-training
+    during pre-training.
+
+
     """
     train_dataset, val_dataset, test_dataset = load_datasets(
         dataset=datasets.CIFAR10, 
@@ -34,11 +37,11 @@ def finetune_cifar10(
 
     all_train_dataset = ConcatDataset([train_dataset, val_dataset])
 
-    train_dataloader, val_dataloader, all_train_dataloader, test_dataloader = \
+    train_dataloader, val_dataloader, test_dataloader = \
         to_dataloaders(
-            [train_dataset, val_dataset, all_train_dataset, test_dataset],
-            batch_sizes=[batch_size] * 4,
-            shuffles=[True, True, True, False]
+            [train_dataset, val_dataset, test_dataset],
+            batch_sizes=[batch_size] * 3,
+            shuffles=[True, True, False]
         )
     
     N_CLASSES = len(test_dataset.classes)
@@ -50,12 +53,12 @@ def finetune_cifar10(
     model = model.to(device)
 
     OPTIMISER = torch.optim.Adam(params=model.parameters(), lr=learning_rate/2)
-    SCHEDULER = None
-    # SCHEDULER = torch.optim.lr_scheduler.StepLR(
-    #     OPTIMISER, 
-    #     step_size=5, 
-    #     gamma=0.5
-    # )
+    if scheduler != None:
+        scheduler = torch.optim.lr_scheduler.StepLR(
+            OPTIMISER, 
+            step_size=5, 
+            gamma=0.5
+        )
     LOSS_FN = nn.CrossEntropyLoss()
 
     if k_folds is None:
@@ -67,7 +70,7 @@ def finetune_cifar10(
                 model=model,
                 loss_fn=LOSS_FN,
                 optimiser=OPTIMISER,
-                scheduler=SCHEDULER,
+                scheduler=scheduler,
                 n_epochs=epochs,
                 device=device   ,
             )
@@ -87,7 +90,7 @@ def finetune_cifar10(
                 model=model,
                 loss_fn=LOSS_FN,
                 optimiser=OPTIMISER,
-                scheduler=SCHEDULER,
+                scheduler=scheduler,
                 n_epochs=epochs,
                 device=device,
             )
@@ -105,6 +108,7 @@ def finetune_cifar10(
     
     return \
         model, \
+        test_dataloader, \
         train_losses, \
         train_accuracies, \
         val_losses, \
