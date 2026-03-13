@@ -97,6 +97,7 @@ def train_cross_validation(
         print(f"{val_accuracies = }")
         print(f"{val_accuraciess = }")
         print(f"{max(val_accuracies) = }")
+        print(f"{max(val_accuraciess) = }")
         # print(f"{len(val_accuracies) = }")
         # print(f"{np.max(np.array(val_accuraciess)) = }")
         if (
