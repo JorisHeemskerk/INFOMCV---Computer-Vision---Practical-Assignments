@@ -86,6 +86,7 @@ def finetune_cifar10(
     LOSS_FN = nn.CrossEntropyLoss()
 
     if k_folds is None:
+        print("not using the k-folds")
         # Train it the normal way.
         train_losses, train_accuracies, val_losses, val_accuracies, model = \
             train(
@@ -101,6 +102,7 @@ def finetune_cifar10(
         train_losses_std, train_accuracies_std = None, None
         val_losses_std, val_accuracies_std = None, None
     else:
+        print("using the k-folds")
         # Use k-fold cross validation
         train_lossess, train_accuraciess, val_lossess, val_accuraciess, model=\
             train_cross_validation(
