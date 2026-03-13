@@ -61,6 +61,7 @@ def train_cross_validation(
         scheduler.state_dict()
     ) if scheduler is not None else None
 
+    print(f"{type(initial_model_state)}")
 
     fold_size = len(full_train_dataset) // k_folds
     for k in range(k_folds):
@@ -93,6 +94,9 @@ def train_cross_validation(
                 n_epochs=n_epochs,
                 device=device,
             )
+        print(f"{max(val_accuracies) = }")
+        print(f"{len(val_accuracies) = }")
+        print(f"{np.max(np.array(val_accuraciess)) = }")
         if (
             max(val_accuracies) if len(val_accuracies) > 0 else -1
         ) > \
