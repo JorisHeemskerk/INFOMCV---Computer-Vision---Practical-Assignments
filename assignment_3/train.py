@@ -114,6 +114,7 @@ def train_cross_validation(
         val_lossess.append(val_losses)
         val_accuraciess.append(val_accuracies)
 
+    print(f"{type(best) = }")
     model.load_state_dict(best)
     return \
         np.array(train_lossess), \
