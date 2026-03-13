@@ -26,7 +26,7 @@ def train_cross_validation(
 
     :param full_train_dataset: Dataset to train with.
     :type full_train_dataset: Dataset
-    :param k_folds: The number of folds to use
+    :param k_folds: The number of folds to use.
     :type k_folds: int
     :param model: Model to train.
     :type model: nn.Module
@@ -61,7 +61,6 @@ def train_cross_validation(
         scheduler.state_dict()
     ) if scheduler is not None else None
 
-
     fold_size = len(full_train_dataset) // k_folds
     for k in range(k_folds):
         print(f"\033[1;33m--==Fold {k+1}/{k_folds}==--\t\033[0;37m")
@@ -82,7 +81,7 @@ def train_cross_validation(
         train_dataloader = dataset_to_dataloader_function(train_dataset)[0]
         val_dataloader = dataset_to_dataloader_function(val_dataset)[0]
 
-        train_losses, train_accuracies, val_losses, val_accuracies, model = \
+        train_losses, train_accuracies, val_losses, val_accuracies, _ = \
             train(
                 train_dataloader=train_dataloader, 
                 val_dataloader=val_dataloader,
@@ -93,6 +92,7 @@ def train_cross_validation(
                 n_epochs=n_epochs,
                 device=device,
             )
+        
         if (
             max(val_accuracies) if len(val_accuracies) > 0 else -1
         ) > \
