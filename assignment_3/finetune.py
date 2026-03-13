@@ -21,10 +21,14 @@ def finetune_cifar10(
 )-> tuple[
     LeNet5Base,
     torch.utils.data.dataloader.DataLoader,
-    list,
-    list,
-    list,
-    
+    # list[],
+    # list[],
+    # list[],
+    # list[],
+    # list[],
+    # list[],
+    # list[],
+    # list[]
 ]:
     """
     Finetune a model on the cifar 10 dataset.
@@ -34,10 +38,10 @@ def finetune_cifar10(
     cifar 10 dataset with the learning rate halved from what it was
     during pre-training.
 
-    :param model:
-    :type model:
-    :param batch_size:
-    :type batch_size:
+    :param model: Model that will be finetuned
+    :type model: LeNet5Base
+    :param batch_size: batch size during training
+    :type batch_size: int
     :param epochs:
     :type epochs:
     :param learning_rate:
@@ -101,7 +105,7 @@ def finetune_cifar10(
         train_lossess, train_accuraciess, val_lossess, val_accuraciess, model=\
             train_cross_validation(
                 full_train_dataset=all_train_dataset, 
-                k_folds=5,
+                k_folds=k_folds,
                 dataset_to_dataloader_function=lambda dataset: to_dataloaders(
                     [dataset],
                     batch_sizes=[batch_size],

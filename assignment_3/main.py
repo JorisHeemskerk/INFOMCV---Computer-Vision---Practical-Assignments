@@ -99,7 +99,7 @@ def main()-> None:
         train_lossess, train_accuraciess, val_lossess, val_accuraciess, model=\
             train_cross_validation(
                 full_train_dataset=all_train_dataset, 
-                k_folds=5,
+                k_folds=K_FOLDS,
                 dataset_to_dataloader_function=lambda dataset: to_dataloaders(
                     [dataset],
                     batch_sizes=[BATCH_SIZE],
