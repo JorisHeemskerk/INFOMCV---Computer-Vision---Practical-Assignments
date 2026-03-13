@@ -2,7 +2,8 @@ import numpy as np
 import torch
 
 from torch import nn
-from torchvision import datasets
+from torchvision import datasets, transforms
+from torchvision.transforms import ToTensor
 from torch.utils.data import ConcatDataset
 
 from data import load_datasets, to_dataloaders
@@ -30,11 +31,26 @@ def main()-> None:
     ####################################################################
     DATASET = datasets.CIFAR100
     FINETUNE = True
+    AUGMENTATION = True
 
     train_dataset, val_dataset, test_dataset = load_datasets(
         dataset=DATASET, 
         root="assignment_3/data/", 
-        train_val_partition=(.8, .2)
+        train_val_partition=(.8, .2),
+        train_tranform=transforms.Compose([
+                ToTensor(),
+                # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            ]) if AUGMENTATION else transforms.Compose([
+                transforms.RandomHorizontalFlip(p=0.5),
+                transforms.RandomCrop(size=32, padding=4),
+                transforms.ColorJitter(brightness=0.2, contrast=0.2),
+                ToTensor(),
+                # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            ]),
+        eval_transform=transforms.Compose([
+                ToTensor(),
+                # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            ])
     )
     all_train_dataset = ConcatDataset([train_dataset, val_dataset])
     # visualise_all_classes(train_dataset, test_dataset.classes)

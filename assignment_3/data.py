@@ -9,7 +9,8 @@ def load_datasets(
     dataset: Callable, 
     root: str,
     train_val_partition: tuple[float, float],
-    transform: Callable=ToTensor(),
+    train_tranform: Callable=ToTensor(),
+    eval_transform: Callable=ToTensor(),
     verbose: bool=True
 )-> tuple[Dataset, Dataset, Dataset]:
     """
@@ -34,16 +35,30 @@ def load_datasets(
         root=root,
         train=True,
         download=True,
-        transform=transform
+        transform=train_tranform
+    )
+    evaluation_data = dataset(
+        root=root,
+        train=True,
+        download=True,
+        transform=eval_transform
     )
     test_dataset = dataset(
         root=root,
         train=False,
         download=True,
-        transform=transform
+        transform=eval_transform
     )
-    train_dataset, val_dataset = torch.utils.data.random_split(
-        training_data, train_val_partition
+
+    train_size = int(train_val_partition[0] * len(training_data))
+    indices = torch.randperm(len(training_data))
+    train_dataset = torch.utils.data.Subset(
+        training_data,
+        indices[:train_size]
+    )
+    val_dataset = torch.utils.data.Subset(
+        evaluation_data,
+        indices[train_size:]
     )
     if verbose:
         print(
