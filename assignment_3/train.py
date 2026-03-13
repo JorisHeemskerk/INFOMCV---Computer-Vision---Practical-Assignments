@@ -108,6 +108,7 @@ def train_cross_validation(
         np.max(np.array(val_accuraciess)) if len(val_accuraciess) > 0 else -2:
             print("new best found")
             best = copy.deepcopy(model.state_dict())
+            print(f"{type(best) = }")
         train_lossess.append(train_losses)
         train_accuraciess.append(train_accuracies)
         val_lossess.append(val_losses)
