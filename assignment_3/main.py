@@ -80,7 +80,6 @@ def main()-> None:
     #                         Train the model.                         #
     ####################################################################
     if K_FOLDS is None:
-        print("Not using the k_folds")
         # Train it the normal way.
         train_losses, train_accuracies, val_losses, val_accuracies, model = \
             train(
@@ -96,7 +95,6 @@ def main()-> None:
         train_losses_std, train_accuracies_std = None, None
         val_losses_std, val_accuracies_std = None, None
     else:
-        print("using the k_folds")
         # Use k-fold cross validation
         train_lossess, train_accuraciess, val_lossess, val_accuraciess, model=\
             train_cross_validation(
@@ -141,24 +139,6 @@ def main()-> None:
             DEVICE,
             SCHEDULER
         )
-        print(f"{type(model) = }")
-        print(f"{type(test_dataloader) = }")
-        print(f"{type(train_losses) = }")
-        print(train_losses)
-        print(f"{type(train_accuracies) = }")
-        print(train_accuracies)
-        print(f"{type(val_losses) = }")
-        print(val_losses)
-        print(f"{type(val_accuracies) = }")
-        print(val_accuracies)
-        print(f"{type(train_losses_std) = }")
-        print(train_losses_std)
-        print(f"{type(train_accuracies_std) = }")
-        print(train_accuracies_std)
-        print(f"{type(val_losses_std) = }")
-        print(val_losses_std)
-        print(f"{type(val_accuracies_std) = }")
-        print(val_accuracies_std)
 
     print(
         f"\033[32mBest  training  accuracy: {max(train_accuracies)}, achieved "

@@ -13,7 +13,7 @@ from lenet5_base import LeNet5Base
 def finetune_cifar10(
     model: LeNet5Base,
     batch_size: int,
-    epochs: int,
+    n_epochs: int,
     learning_rate: float,
     k_folds: int,
     device: str,
@@ -21,14 +21,14 @@ def finetune_cifar10(
 )-> tuple[
     LeNet5Base,
     torch.utils.data.dataloader.DataLoader,
-    # list[],
-    # list[],
-    # list[],
-    # list[],
-    # list[],
-    # list[],
-    # list[],
-    # list[]
+    list[float],
+    list[float],
+    list[float],
+    list[float],
+    list[float],
+    list[float],
+    list[float],
+    list[float]
 ]:
     """
     Finetune a model on the cifar 10 dataset.
@@ -42,16 +42,16 @@ def finetune_cifar10(
     :type model: LeNet5Base
     :param batch_size: batch size during training
     :type batch_size: int
-    :param epochs:
-    :type epochs:
-    :param learning_rate:
-    :type learning_rate:
-    :param k_folds:
-    :type k_folds:
-    :param device:
-    :type device:
-    :param scheduler:
-    :type scheduler:
+    :param n_epochs: Number of epochs to train for.
+    :type n_epochs: int
+    :param learning_rate: Learnning rate by which the model trains.
+    :type learning_rate: float
+    :param k_folds: The number of folds to use.
+    :type k_folds: int
+    :param device: Device to move the model and data to.
+    :type device: str
+    :param scheduler: Scheduler to change how the learning rate adapts.
+    :type scheduler: torch.optim.lr_scheduler.LRScheduler | None
     """
     train_dataset, val_dataset, test_dataset = load_datasets(
         dataset=datasets.CIFAR10, 
@@ -86,7 +86,6 @@ def finetune_cifar10(
     LOSS_FN = nn.CrossEntropyLoss()
 
     if k_folds is None:
-        print("not using the k-folds")
         # Train it the normal way.
         train_losses, train_accuracies, val_losses, val_accuracies, model = \
             train(
@@ -96,13 +95,12 @@ def finetune_cifar10(
                 loss_fn=LOSS_FN,
                 optimiser=OPTIMISER,
                 scheduler=scheduler,
-                n_epochs=epochs,
+                n_epochs=n_epochs,
                 device=device   ,
             )
         train_losses_std, train_accuracies_std = None, None
         val_losses_std, val_accuracies_std = None, None
     else:
-        print("using the k-folds")
         # Use k-fold cross validation
         train_lossess, train_accuraciess, val_lossess, val_accuraciess, model=\
             train_cross_validation(
@@ -117,7 +115,7 @@ def finetune_cifar10(
                 loss_fn=LOSS_FN,
                 optimiser=OPTIMISER,
                 scheduler=scheduler,
-                n_epochs=epochs,
+                n_epochs=n_epochs,
                 device=device,
             )
         train_losses = np.mean(train_lossess, axis=0)
