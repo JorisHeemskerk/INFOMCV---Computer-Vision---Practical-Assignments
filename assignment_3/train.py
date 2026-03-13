@@ -81,7 +81,7 @@ def train_cross_validation(
         train_dataloader = dataset_to_dataloader_function(train_dataset)[0]
         val_dataloader = dataset_to_dataloader_function(val_dataset)[0]
 
-        train_losses, train_accuracies, val_losses, val_accuracies, _ = \
+        train_losses, train_accuracies, val_losses, val_accuracies, model = \
             train(
                 train_dataloader=train_dataloader, 
                 val_dataloader=val_dataloader,

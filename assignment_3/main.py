@@ -80,6 +80,7 @@ def main()-> None:
     #     gamma=0.5
     # )
     LOSS_FN = nn.CrossEntropyLoss()
+    
     ####################################################################
     #                         Train the model.                         #
     ####################################################################
@@ -128,6 +129,9 @@ def main()-> None:
         val_accuracies = np.mean(val_accuraciess, axis=0)
         val_accuracies_std  = np.std(val_accuracies, axis=0)\
 
+    ####################################################################
+    #                        Finetune the model.                       #
+    ####################################################################
     if DATASET == datasets.CIFAR100 and FINETUNE:
         OPTIMISER = torch.optim.Adam(
             params=model.parameters(), lr=LEARNING_RATE)
@@ -144,6 +148,9 @@ def main()-> None:
             SCHEDULER
         )
 
+    ####################################################################
+    #                         Show the results.                        #
+    ####################################################################
     print(
         f"\033[32mBest  training  accuracy: {max(train_accuracies)}, achieved "
         f"during epoch {np.argmax(train_accuracies) + 1}.\nBest validation "
