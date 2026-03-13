@@ -6,11 +6,15 @@ from torchvision import datasets
 from torch.utils.data import ConcatDataset
 
 from data import load_datasets, to_dataloaders
-from train import train, train_cross_validation, embed_data
+from train import train, train_cross_validation, embed_data, test_classes
 from lenet5_base import LeNet5Base
 from lenet5_more_feature_kernels import LeNet5MoreFeatureKernels
 from lenet5_extra_conv_layer import LeNet5ExtraConvLayer
-from visualise import visualise_all_classes, visualise_training, perform_tSNE
+from visualise import \
+    visualise_all_classes, \
+    visualise_training, \
+    perform_tSNE, \
+    plot_confusion_matrix
 from finetune import finetune_cifar10
 
 
@@ -24,7 +28,7 @@ def main()-> None:
     ####################################################################
     #                          Load the data.                          #
     ####################################################################
-    DATASET = datasets.CIFAR100
+    DATASET = datasets.CIFAR10
 
     train_dataset, val_dataset, test_dataset = load_datasets(
         dataset=DATASET, 
@@ -63,9 +67,9 @@ def main()-> None:
     ####################################################################
     #                     Set the hyperparemeters.                     #
     ####################################################################
-    N_EPOCHS = 50
+    N_EPOCHS = 2
     LEARNING_RATE = 0.001
-    K_FOLDS: int | None = None
+    K_FOLDS: int | None = 2
 
     OPTIMISER = torch.optim.Adam(params=model.parameters(), lr=LEARNING_RATE)
     SCHEDULER = None
@@ -98,7 +102,7 @@ def main()-> None:
         train_lossess, train_accuraciess, val_lossess, val_accuraciess, model=\
             train_cross_validation(
                 full_train_dataset=all_train_dataset, 
-                k_folds=5,
+                k_folds=K_FOLDS,
                 dataset_to_dataloader_function=lambda dataset: to_dataloaders(
                     [dataset],
                     batch_sizes=[BATCH_SIZE],
@@ -135,14 +139,17 @@ def main()-> None:
             DEVICE
         )
 
+    model.save("assignment_3/model_cache")
+
+    ####################################################################
+    #                          Show results.                           #
+    ####################################################################
     print(
         f"\033[32mBest  training  accuracy: {max(train_accuracies)}, achieved "
         f"during epoch {np.argmax(train_accuracies) + 1}.\nBest validation "
         f"accuracy: {max(val_accuracies)}, achieved during epoch "
         f"{np.argmax(val_accuracies) + 1}.\033[37m"
     )
-    
-    model.save("assignment_3/model_cache")
 
     visualise_training(
         train_losses, 
@@ -155,12 +162,31 @@ def main()-> None:
         val_accuracies_std,
         model_name=model.__class__.__name__
     )
+
+    test_loss, test_accuracy, test_labels, test_predictions = test_classes(
+        dataloader=test_dataloader,
+        model=model,
+        loss_fn=LOSS_FN,
+        device=DEVICE
+    )
+    print(
+        f"\033[32mTest accuracy: {test_accuracy}, "
+        f"test loss: {test_loss}\033[37m"
+    )
+    plot_confusion_matrix(test_labels, test_predictions, test_dataset.classes)
+
     ####################################################################
     #                   Perform t-SNE on test data.                    #
     ####################################################################
     # perform_tSNE(
     #     *embed_data(test_dataloader, model, DEVICE), 
-    #     test_dataset.classes
+    #     test_dataset.classes,
+    #     images=np.stack(
+    #         [
+    #             test_dataset[i][0].permute(1, 2, 0).numpy() \
+    #                 for i in range(len(test_dataset))
+    #         ]
+    #     )
     # )
 
 if __name__ == "__main__":

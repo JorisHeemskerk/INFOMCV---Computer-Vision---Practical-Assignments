@@ -82,7 +82,7 @@ def train_cross_validation(
         train_dataloader = dataset_to_dataloader_function(train_dataset)[0]
         val_dataloader = dataset_to_dataloader_function(val_dataset)[0]
 
-        train_losses, train_accuracies, val_losses, val_accuracies, best = \
+        train_losses, train_accuracies, val_losses, val_accuracies, model = \
             train(
                 train_dataloader=train_dataloader, 
                 val_dataloader=val_dataloader,
@@ -267,6 +267,49 @@ def val_epoch(
         f"Avg loss: {test_loss:>8f} \n\033[37m"
     )
     return test_loss, 100 * correct
+
+def test_classes(
+    dataloader: DataLoader, 
+    model: nn.Module, 
+    loss_fn: nn.Module,
+    device: str
+) -> tuple[float, float, np.ndarray, np.ndarray]:
+    """
+    Test the accuracy and loss for a given dataset and model.
+
+    :param dataloader: Dataset to test with.
+    :type dataloader: DataLoader
+    :param model: Model to test.
+    :type model: nn.Module
+    :param loss_fn: Loss function to test with.
+    :type loss_fn: nn.Module
+    :param device: Device to move data to.
+    :type device: str
+    :return: Average validation loss, accuracy, true labels, and 
+        predicted labels.
+    :rtype: tuple[float, float, np.ndarray, np.ndarray]
+    """
+    model.eval()
+    test_loss, correct = 0, 0
+    all_labels, all_predictions = [], []
+
+    with torch.no_grad():
+        for X, y in dataloader:
+            X, y = X.to(device), y.to(device)
+            y_hat = model(X)
+            test_loss += loss_fn(y_hat, y).item()
+            
+            predictions = y_hat.argmax(1)
+            correct += (predictions == y).type(torch.float).sum().item()
+
+            all_labels.extend(y.cpu().numpy())
+            all_predictions.extend(predictions.cpu().numpy())
+
+    return \
+        test_loss / len(dataloader), \
+        100 * (correct / len(dataloader.dataset)), \
+        np.array(all_labels), \
+        np.array(all_predictions)
 
 def embed_data(
     dataloader: DataLoader, 
