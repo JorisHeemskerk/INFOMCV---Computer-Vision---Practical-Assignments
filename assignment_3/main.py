@@ -80,7 +80,7 @@ def main()-> None:
     #     gamma=0.5
     # )
     LOSS_FN = nn.CrossEntropyLoss()
-    
+
     ####################################################################
     #                         Train the model.                         #
     ####################################################################
@@ -180,7 +180,20 @@ def main()-> None:
         f"\033[32mTest accuracy: {test_accuracy}, "
         f"test loss: {test_loss}\033[37m"
     )
-    plot_confusion_matrix(test_labels, test_predictions, test_dataset.classes)
+    # Plot confusion matrix, non-normalised and normalised.
+    plot_confusion_matrix(
+        test_labels, 
+        test_predictions, 
+        test_dataset.classes,
+        False
+    )
+    plot_confusion_matrix(
+        test_labels, 
+        test_predictions, 
+        test_dataset.classes, 
+        True
+    )
+    
 
     ####################################################################
     #                   Perform t-SNE on test data.                    #
