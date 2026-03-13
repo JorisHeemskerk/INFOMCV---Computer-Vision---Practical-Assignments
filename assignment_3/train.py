@@ -94,16 +94,17 @@ def train_cross_validation(
                 n_epochs=n_epochs,
                 device=device,
             )
-        print(f"{val_accuracies = }")
-        print(f"{val_accuraciess = }")
-        print(f"{max(val_accuracies) = }")
-        print(f"{max(val_accuraciess) = }")
+        # print(f"{val_accuracies = }")
+        # print(f"{val_accuraciess = }")
+        # print(f"{max(val_accuracies) = }")
+        # print(f"{max(val_accuraciess) = }")
         # print(f"{len(val_accuracies) = }")
         # print(f"{np.max(np.array(val_accuraciess)) = }")
         if (
             max(val_accuracies) if len(val_accuracies) > 0 else -1
         ) > \
         np.max(np.array(val_accuraciess)) if len(val_accuraciess) > 0 else -2:
+            print("new best found")
             best = copy.deepcopy(model.state_dict())
         train_lossess.append(train_losses)
         train_accuraciess.append(train_accuracies)
