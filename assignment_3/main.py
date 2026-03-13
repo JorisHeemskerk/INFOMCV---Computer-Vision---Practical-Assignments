@@ -80,6 +80,7 @@ def main()-> None:
     #                         Train the model.                         #
     ####################################################################
     if K_FOLDS is None:
+        print("Not using the k_folds")
         # Train it the normal way.
         train_losses, train_accuracies, val_losses, val_accuracies, model = \
             train(
@@ -95,6 +96,7 @@ def main()-> None:
         train_losses_std, train_accuracies_std = None, None
         val_losses_std, val_accuracies_std = None, None
     else:
+        print("using the k_folds")
         # Use k-fold cross validation
         train_lossess, train_accuraciess, val_lossess, val_accuraciess, model=\
             train_cross_validation(
