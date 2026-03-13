@@ -94,6 +94,8 @@ def train_cross_validation(
                 n_epochs=n_epochs,
                 device=device,
             )
+        print(f"{val_accuracies = }")
+        print(f"{val_accuraciess = }")
         print(f"{max(val_accuracies) = }")
         print(f"{len(val_accuracies) = }")
         print(f"{np.max(np.array(val_accuraciess)) = }")
