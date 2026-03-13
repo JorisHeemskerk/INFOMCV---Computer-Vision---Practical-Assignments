@@ -1,8 +1,11 @@
 import math
 import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sns
 
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from sklearn.manifold import TSNE
+from sklearn.metrics import confusion_matrix
 from torch.utils.data import Dataset
 from typing import Any
 
@@ -127,6 +130,7 @@ def perform_tSNE(
     embeddings: np.ndarray, 
     labels: np.ndarray, 
     label_names: dict[int, str],
+    images: np.ndarray | None=None,
     **kwargs: dict[str, Any]
 )-> None:
     """
@@ -139,6 +143,8 @@ def perform_tSNE(
     :type labels: np.ndarray
     :param label_names: dictionary mapping the label indices to names.
     :type label_names: dict[int, str]
+    :param images: The images to display on top of the dots if provided.
+    :type images: np.ndarray | None
     :param **kwargs: Keyword arguments to pass to TSNE method.
     :type **kwargs: dict[str, Any]
     """
@@ -152,11 +158,13 @@ def perform_tSNE(
     label_to_color = {label: cmap(i) for i, label in enumerate(unique_labels)}
     colors = [label_to_color[label] for label in labels]
 
-    plt.figure(figsize=(20, 20))
+    fig, ax = plt.subplots(figsize=(20, 20))
     x, y = zip(*reduced)
     plt.scatter(x, y, c=colors, alpha=.5)
 
-    # Add a com
+    ax.set_xlim(reduced[:, 0].min() - 5, reduced[:, 0].max() + 5)
+    ax.set_ylim(reduced[:, 1].min() - 5, reduced[:, 1].max() + 5)
+
     handles = [
         plt.Line2D(
             [0], 
@@ -164,6 +172,7 @@ def perform_tSNE(
             marker='o', 
             color='w', 
             markerfacecolor=label_to_color[label],
+            markeredgecolor=label_to_color[label],
             markersize=8, 
             label=label_names[label]
         ) for label in unique_labels
@@ -178,5 +187,56 @@ def perform_tSNE(
     plt.title("t-SNE projection of all datapoints")
     plt.xlabel("component 1")
     plt.ylabel("component 2")
-    plt.savefig('assignment_3/t-SNE.png')
+    plt.savefig('assignment_3/t-SNE_dots.png', bbox_inches='tight')
+
+    if images is not None:
+        for (x, y), image, color in zip(reduced, images, colors):
+            imagebox = OffsetImage(image, zoom=.3)
+            ab = AnnotationBbox(
+                imagebox,
+                (x, y),
+                frameon=True,
+                bboxprops=dict(
+                    edgecolor=color,
+                    linewidth=1.5,
+                    boxstyle='square,pad=0.1'
+                ),
+                pad=0.1
+            )
+            ax.add_artist(ab)
+        plt.savefig('assignment_3/t-SNE_images.png', bbox_inches='tight')
+    plt.show()
+
+def plot_confusion_matrix(
+    y_true: np.ndarray, 
+    y_pred: np.ndarray, 
+    class_names: list[str]
+)-> None:
+    """
+    Plot a confusion matrix.
+
+    :param y_true: The true labels.
+    :type y_true: np.ndarray
+    :param y_pred: The predicted labels.
+    :type y_pred: np.ndarray
+    :param class_names: names of all classes.
+    :type class_names: list[str]
+    """
+    cm = confusion_matrix(y_true, y_pred)
+    fig, ax = plt.subplots(figsize=(8, 6))
+    sns.heatmap(
+        cm,
+        annot=True,
+        fmt="d",
+        cmap="Blues",
+        xticklabels=class_names,
+        yticklabels=class_names,
+        ax=ax
+    )
+
+    ax.set_xlabel("Predicted Label")
+    ax.set_ylabel("True Label")
+    ax.set_title("Confusion Matrix")
+    plt.tight_layout()
+    plt.savefig(f'assignment_3/confusion_matrix_')
     plt.show()
