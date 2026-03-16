@@ -84,9 +84,9 @@ def main()-> None:
     ####################################################################
     #                     Set the hyperparemeters.                     #
     ####################################################################
-    N_EPOCHS = 2
+    N_EPOCHS = 50
     LEARNING_RATE = 0.001
-    K_FOLDS: int | None = 2
+    K_FOLDS: int | None = None
 
     OPTIMISER = torch.optim.Adam(params=model.parameters(), lr=LEARNING_RATE)
     SCHEDULER = None
@@ -96,6 +96,7 @@ def main()-> None:
     #     gamma=0.5
     # )
     LOSS_FN = nn.CrossEntropyLoss()
+
     ####################################################################
     #                         Train the model.                         #
     ####################################################################
@@ -144,6 +145,9 @@ def main()-> None:
         val_accuracies = np.mean(val_accuraciess, axis=0)
         val_accuracies_std  = np.std(val_accuracies, axis=0)\
 
+    ####################################################################
+    #                        Finetune the model.                       #
+    ####################################################################
     if DATASET == datasets.CIFAR100 and FINETUNE:
         OPTIMISER = torch.optim.Adam(
             params=model.parameters(), lr=LEARNING_RATE)
@@ -160,6 +164,9 @@ def main()-> None:
             SCHEDULER
         )
 
+    ####################################################################
+    #                         Show the results.                        #
+    ####################################################################
     print(
         f"\033[32mBest  training  accuracy: {max(train_accuracies)}, achieved "
         f"during epoch {np.argmax(train_accuracies) + 1}.\nBest validation "
@@ -189,7 +196,20 @@ def main()-> None:
         f"\033[32mTest accuracy: {test_accuracy}, "
         f"test loss: {test_loss}\033[37m"
     )
-    plot_confusion_matrix(test_labels, test_predictions, test_dataset.classes)
+    # Plot confusion matrix, non-normalised and normalised.
+    plot_confusion_matrix(
+        test_labels, 
+        test_predictions, 
+        test_dataset.classes,
+        None
+    )
+    plot_confusion_matrix(
+        test_labels, 
+        test_predictions, 
+        test_dataset.classes, 
+        'true'
+    )
+    
 
     ####################################################################
     #                   Perform t-SNE on test data.                    #

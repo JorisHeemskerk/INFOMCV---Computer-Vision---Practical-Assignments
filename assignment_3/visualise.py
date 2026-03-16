@@ -210,7 +210,8 @@ def perform_tSNE(
 def plot_confusion_matrix(
     y_true: np.ndarray, 
     y_pred: np.ndarray, 
-    class_names: list[str]
+    class_names: list[str],
+    normalise: str | None
 )-> None:
     """
     Plot a confusion matrix.
@@ -221,13 +222,15 @@ def plot_confusion_matrix(
     :type y_pred: np.ndarray
     :param class_names: names of all classes.
     :type class_names: list[str]
+    :param normalise: Normalise the class values.
+    :type normalise: str | None
     """
-    cm = confusion_matrix(y_true, y_pred)
+    cm = confusion_matrix(y_true, y_pred, normalize=normalise)
     fig, ax = plt.subplots(figsize=(8, 6))
     sns.heatmap(
         cm,
         annot=True,
-        fmt="d",
+        fmt=".2f" if normalise else "d",
         cmap="Blues",
         xticklabels=class_names,
         yticklabels=class_names,
@@ -238,5 +241,7 @@ def plot_confusion_matrix(
     ax.set_ylabel("True Label")
     ax.set_title("Confusion Matrix")
     plt.tight_layout()
-    plt.savefig(f'assignment_3/confusion_matrix_')
+    plt.savefig(
+        f'assignment_3/confusion_matrix{"_normalised" if normalise else ""}'
+    )
     plt.show()
