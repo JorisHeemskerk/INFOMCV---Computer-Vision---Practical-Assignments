@@ -211,7 +211,7 @@ def plot_confusion_matrix(
     y_true: np.ndarray, 
     y_pred: np.ndarray, 
     class_names: list[str],
-    normalise: bool
+    normalise: str | None
 )-> None:
     """
     Plot a confusion matrix.
@@ -223,14 +223,14 @@ def plot_confusion_matrix(
     :param class_names: names of all classes.
     :type class_names: list[str]
     :param normalise: Normalise the class values.
-    :type normalise: bool
+    :type normalise: str | None
     """
     cm = confusion_matrix(y_true, y_pred, normalize=normalise)
     fig, ax = plt.subplots(figsize=(8, 6))
     sns.heatmap(
         cm,
         annot=True,
-        fmt="d",
+        fmt=".2f" if normalise else "d",
         cmap="Blues",
         xticklabels=class_names,
         yticklabels=class_names,

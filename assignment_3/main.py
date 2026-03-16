@@ -28,7 +28,7 @@ def main()-> None:
     ####################################################################
     #                          Load the data.                          #
     ####################################################################
-    DATASET = datasets.CIFAR100
+    DATASET = datasets.CIFAR10
     FINETUNE = True
 
     train_dataset, val_dataset, test_dataset = load_datasets(
@@ -68,9 +68,9 @@ def main()-> None:
     ####################################################################
     #                     Set the hyperparemeters.                     #
     ####################################################################
-    N_EPOCHS = 2
+    N_EPOCHS = 50
     LEARNING_RATE = 0.001
-    K_FOLDS: int | None = 2
+    K_FOLDS: int | None = None
 
     OPTIMISER = torch.optim.Adam(params=model.parameters(), lr=LEARNING_RATE)
     SCHEDULER = None
@@ -185,13 +185,13 @@ def main()-> None:
         test_labels, 
         test_predictions, 
         test_dataset.classes,
-        False
+        None
     )
     plot_confusion_matrix(
         test_labels, 
         test_predictions, 
         test_dataset.classes, 
-        True
+        'true'
     )
     
 
