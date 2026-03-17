@@ -30,7 +30,7 @@ def main()-> None:
     ####################################################################
     #                          Load the data.                          #
     ####################################################################
-    DATASET = datasets.CIFAR10
+    DATASET = "tinyimagenet"
     FINETUNE = False
     AUGMENTATION = False
     ROOT = "assignment_3/data/"
