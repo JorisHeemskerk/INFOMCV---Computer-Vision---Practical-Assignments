@@ -35,15 +35,12 @@ def visualise_all_classes(dataset: Dataset, labels: list[str])-> None:
         if len(class_samples) == len(labels):
             break
 
-    print(class_samples)
-
     figure = plt.figure(figsize=(8, 8))
     rows, cols = best_grid(len(labels))
     for i, class_idx in enumerate(sorted(class_samples.keys()), start=1):
         img, label = dataset[class_samples[class_idx]]
-        print(label)
         figure.add_subplot(rows, cols, i)
-        # plt.title(labels[label])
+        plt.title(labels[label])
         plt.axis("off")
         plt.imshow(img.permute(1, 2, 0))
     plt.show()

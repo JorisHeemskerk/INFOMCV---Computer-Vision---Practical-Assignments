@@ -5,20 +5,22 @@ from torchvision.transforms import ToTensor
 from torch.utils.data import Dataset, Subset
 from typing import Callable
 
+from filtered_dataset import FilteredDataset
+
 TINYIMAGENET_TO_CIFAR10 = {
-    "airplane": [],
+    # "airplane": [],
     "automobile": [
         "beach wagon", "convertible", "limousine", "sports car"
     ],
     "bird": ["goose", "albatross"],
     "cat": ["tabby", "Persian cat", "Egyptian cat"],
-    "deer": [],
+    # "deer": [],
     "dog": [
         "Chihuahua", "Yorkshire terrier", "golden retriever",
         "Labrador retriever", "German shepherd", "standard poodle"
     ],
     "frog": ["bullfrog", "tailed frog"],
-    "horse": [],
+    # "horse": [],
     "ship": ["gondola", "lifeboat"],
     "truck": ["moving van", "police van"],
 }
@@ -96,33 +98,16 @@ def load_tinyimagenet(
 
     return train_dataset, val_dataset, test_dataset
 
-def filter_subset(subset: Subset, index_remap: dict[int, int])-> Subset:
-    # kept_indices = [
-    #     i for i in subset.indices
-    #     if subset.dataset.targets[i] in index_remap.keys()
-    # ]
-    # new_subset = Subset(subset.dataset, kept_indices)
-
-    # for i in kept_indices:
-    #     new_subset.dataset.targets[i] = index_remap[
-    #         new_subset.dataset.targets[i]
-    #     ]
-    kept_indices = [
-        i for i in subset.indices
-        if subset.dataset.targets[i] != -1
-    ]
-    new_subset = Subset(subset.dataset, kept_indices)
-    
-    return new_subset
-
 def filter_tinyimagenet_to_cifar10(
     train_dataset: Subset,
     val_dataset: Subset,
-    test_dataset: Dataset
-)-> tuple[Subset, Subset, Subset]:
+    test_dataset: Dataset,
+    verbose: bool=True
+) -> tuple[FilteredDataset, FilteredDataset, FilteredDataset]:
     """
-    Filter the TinyImageNet to only keep datapoints conforming with the
-    classes present in cifar10.
+    Filter the TinyImageNet datasets to only retain data where the
+    classes overlap with CIFAR10 and remap the target labels to CIFAR10
+    indices.
 
     :param train_dataset: Train dataset.
     :type train_dataset: Subset
@@ -130,49 +115,36 @@ def filter_tinyimagenet_to_cifar10(
     :type val_dataset: Subset
     :param test_dataset: Test dataset.
     :type test_dataset: Dataset
+    :param verbose: Print info during process (DEFAULT=True)
+    :type verbose: bool 
+    :returns: Train, val, and test datasets, in that order.
+    :rtype: tuple[FilteredDataset, FilteredDataset, FilteredDataset]
     """
-    # print(len(test_dataset))
-    # print(set(test_dataset.targets))
     tiny_classes = train_dataset.dataset.classes
     cifar10_classes = list(TINYIMAGENET_TO_CIFAR10.keys())
-    
-    # Create remapping table
+
     index_remap = {}
     for i, tiny_class in enumerate(tiny_classes):
         for j, cifar_class in enumerate(cifar10_classes):
             if any(
-                keyword in tiny_class for keyword in \
-                TINYIMAGENET_TO_CIFAR10[cifar_class]
+                keyword in tiny_class
+                for keyword in TINYIMAGENET_TO_CIFAR10[cifar_class]
             ):
                 index_remap[i] = j
                 break
-    
-    print(
-        f"\033[30mRetaining {len(set(index_remap.values()))} classes from"
-        f"{len(tiny_classes)} TinyImageNet classes, keeping {len(index_remap)}"
-        f"TinyImageNet labels in dataset.\033[37m"
-    )
 
     test_subset = Subset(test_dataset, list(range(len(test_dataset))))
 
-    for ds in [
-        train_dataset.dataset,
-        val_dataset.dataset,
-        test_subset.dataset
-    ]:
-        ds.targets = [
-            index_remap[target] if target in index_remap.keys() else -1
-            for target in ds.targets
-        ]
-        ds.classes = cifar10_classes
+    filtered_train = FilteredDataset(train_dataset, index_remap, cifar10_classes)
+    filtered_val   = FilteredDataset(val_dataset,   index_remap, cifar10_classes)
+    filtered_test  = FilteredDataset(test_subset,   index_remap, cifar10_classes)
 
-    filtered_train = filter_subset(train_dataset, index_remap)
-    filtered_val = filter_subset(val_dataset, index_remap)
-    filtered_test = filter_subset(test_subset, index_remap)
-
-    # print(index_remap)
-    # print(set(filtered_train.dataset.targets))
-    # print(set(filtered_val.dataset.targets))
-    # print(set(filtered_test.dataset.targets))
+    if verbose:
+        print(
+            f"\033[30mDataset sizes after filtering for cifar10 classes:"
+            f"\n\tTrain: {len(filtered_train)} datapoints"
+            f"\n\tVal:   {len(filtered_val)} datapoints"
+            f"\n\tTest: {len(filtered_test)} datapoints\033[37m"
+        )
 
     return filtered_train, filtered_val, filtered_test

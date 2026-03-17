@@ -32,7 +32,7 @@ def main()-> None:
     ####################################################################
     DATASET = "tinyimagenet"
     FINETUNE = False
-    AUGMENTATION = True
+    AUGMENTATION = False
     ROOT = "assignment_3/data/"
 
     if DATASET == "tinyimagenet":
@@ -63,11 +63,6 @@ def main()-> None:
                 val_dataset,
                 test_dataset
             )
-        # print(train_dataset.indices)
-        print(train_dataset.dataset.classes)
-        
-        visualise_all_classes(train_dataset, train_dataset.dataset.classes)
-        exit()
     else:
         train_dataset, val_dataset, test_dataset = load_datasets(
             dataset=DATASET, 
@@ -88,7 +83,7 @@ def main()-> None:
                     # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
                 ])
         )
-
+    ######################## CIFAR100 handling #########################
     if DATASET == datasets.CIFAR100:
         cifar100_superclasses(
             ROOT,
@@ -100,6 +95,7 @@ def main()-> None:
     all_train_dataset = ConcatDataset([train_dataset, val_dataset])
     # visualise_all_classes(train_dataset, test_dataset.classes)
 
+    ######################## Make data loaders #########################
     BATCH_SIZE = 32
     train_dataloader, val_dataloader, test_dataloader = \
         to_dataloaders(
@@ -161,7 +157,7 @@ def main()-> None:
         train_losses_std, train_accuracies_std = None, None
         val_losses_std, val_accuracies_std = None, None
     else:
-        # Use k-fold cross validation
+    ################### Use k-fold cross validation ####################
         train_lossess, train_accuraciess, val_lossess, val_accuraciess, model=\
             train_cross_validation(
                 full_train_dataset=all_train_dataset, 
@@ -219,6 +215,7 @@ def main()-> None:
         f"{np.argmax(val_accuracies) + 1}.\033[37m"
     )
 
+    ############## Visualise training accuracy and loss ################
     visualise_training(
         train_losses, 
         train_accuracies, 
@@ -242,9 +239,10 @@ def main()-> None:
         f"test loss: {test_loss}\033[37m"
     )
 
+    # Save the model
     model.save("assignment_3/model_cache")
 
-    # Plot confusion matrix, non-normalised and normalised.
+    ####### Plot confusion matrix, non-normalised and normalised. ######
     plot_confusion_matrix(
         test_labels, 
         test_predictions, 
