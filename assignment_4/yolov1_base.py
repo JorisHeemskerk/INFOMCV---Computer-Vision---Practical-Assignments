@@ -1,0 +1,82 @@
+import torch
+from torch import nn
+
+
+class YOLOv1Base(nn.Module):
+    """
+    A YOLOv1-inspired model architecture.
+    """
+    def __init__(self)-> None:
+        """
+        Define the convolutional, pooling and fully connected layers.
+        """
+        super().__init__()
+        self.layers = nn.Sequential(
+            nn.Conv2d(3, 16, 3, padding=1),
+            nn.BatchNorm2d(16),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+
+            nn.Conv2d(16, 32, 3, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            
+            nn.Conv2d(32, 64, 3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+
+            nn.Conv2d(64, 64, 3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+
+            nn.Conv2d(64, 32, 3, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+
+            nn.Flatten(),
+
+            nn.Dropout(.2), # NOTE: how much dropout do we need?
+
+            # 112 -> 56 -> 28 -> 14 -> 7 | 7 * 7 * 32 = 1568
+            nn.Linear(in_features=1568, out_features=512), 
+            nn.ReLU(),
+
+            # 7 * 7 grid * (1 object + 4 bbox + 2 classes) = 343
+            nn.Linear(in_features=512, out_features=343),
+            nn.Sigmoid(),
+        )
+        self.__initialise_weights()
+
+
+    def __initialise_weights(self)-> None:
+        """
+        Apply kaiming uniform initialization to all layers.
+        """
+        for module in self.modules():
+            if isinstance(module, (nn.Conv2d, nn.Linear)):
+                nn.init.kaiming_uniform_(module.weight, nonlinearity="relu")
+                nn.init.zeros_(module.bias)
+
+    def forward(self, x: torch.Tensor)-> torch.Tensor:
+        """
+        Perform a forward pass on the network.
+
+        :param x:
+        :type x: torch.Tensor
+        :return: Input tensor of shape (batch_size, 3, 112, 112).
+        """
+        return self.layers(x)
+
+    def save(self, dir: str)-> None:
+        """
+        Save internal state to file.
+
+        :param dir: Directory to output model to.
+        :type dir: str
+        """
+        filename = f"{dir}/best_{self.__class__.__name__}.pth"
+        print(f"\033[36mSaving model...\033[37m")
+        torch.save(self, filename)
