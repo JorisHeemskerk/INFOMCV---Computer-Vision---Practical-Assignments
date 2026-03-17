@@ -3,7 +3,7 @@ import numpy as np
 
 from torch import nn
 from torchvision import datasets
-from torch.utils.data import ConcatDataset
+from torch.utils.data import ConcatDataset, Dataset
 
 from train import train, train_cross_validation
 from data import load_datasets, to_dataloaders
@@ -20,6 +20,7 @@ def finetune_cifar10(
     scheduler: torch.optim.lr_scheduler.LRScheduler | None
 )-> tuple[
     LeNet5Base,
+    Dataset,
     torch.utils.data.dataloader.DataLoader,
     list[float],
     list[float],
@@ -132,6 +133,7 @@ def finetune_cifar10(
     
     return \
         model, \
+        test_dataset, \
         test_dataloader, \
         train_losses, \
         train_accuracies, \

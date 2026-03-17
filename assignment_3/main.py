@@ -2,10 +2,12 @@ import numpy as np
 import torch
 
 from torch import nn
-from torchvision import datasets
+from torchvision import datasets, transforms
+from torchvision.transforms import ToTensor
 from torch.utils.data import ConcatDataset
 
-from data import load_datasets, to_dataloaders
+from data import load_datasets, to_dataloaders, cifar100_superclasses
+from imagenet import load_tinyimagenet, filter_tinyimagenet_to_cifar10
 from train import train, train_cross_validation, embed_data, test_classes
 from lenet5_base import LeNet5Base
 from lenet5_more_feature_kernels import LeNet5MoreFeatureKernels
@@ -29,16 +31,71 @@ def main()-> None:
     #                          Load the data.                          #
     ####################################################################
     DATASET = datasets.CIFAR10
-    FINETUNE = True
+    FINETUNE = False
+    AUGMENTATION = False
+    ROOT = "assignment_3/data/"
 
-    train_dataset, val_dataset, test_dataset = load_datasets(
-        dataset=DATASET, 
-        root="assignment_3/data/", 
-        train_val_partition=(.8, .2)
-    )
+    if DATASET == "tinyimagenet":
+        train_dataset, val_dataset, test_dataset = load_tinyimagenet(
+            root=ROOT,
+            train_val_partition=(.8, .2),
+            train_transform=transforms.Compose([
+                transforms.Resize(32),
+                transforms.RandomHorizontalFlip(p=0.5),
+                transforms.RandomCrop(size=32, padding=4),
+                transforms.ColorJitter(brightness=0.2, contrast=0.2),
+                ToTensor(),
+                # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            ]) if AUGMENTATION else transforms.Compose([
+                transforms.Resize(32),
+                ToTensor(),
+                # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            ]),
+            eval_transform=transforms.Compose([
+                transforms.Resize(32),
+                ToTensor(),
+                # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            ])
+        )
+        train_dataset, val_dataset, test_dataset = \
+            filter_tinyimagenet_to_cifar10(
+                train_dataset,
+                val_dataset,
+                test_dataset
+            )
+    else:
+        train_dataset, val_dataset, test_dataset = load_datasets(
+            dataset=DATASET, 
+            root=ROOT, 
+            train_val_partition=(.8, .2),
+            train_transform=transforms.Compose([
+                    transforms.RandomHorizontalFlip(p=0.5),
+                    transforms.RandomCrop(size=32, padding=4),
+                    transforms.ColorJitter(brightness=0.2, contrast=0.2),
+                    ToTensor(),
+                    # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                ]) if AUGMENTATION else transforms.Compose([
+                    ToTensor(),
+                    # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                ]),
+            eval_transform=transforms.Compose([
+                    ToTensor(),
+                    # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                ])
+        )
+    ######################## CIFAR100 handling #########################
+    if DATASET == datasets.CIFAR100:
+        cifar100_superclasses(
+            ROOT,
+            train_dataset,
+            val_dataset,
+            test_dataset
+        )
+    
     all_train_dataset = ConcatDataset([train_dataset, val_dataset])
     # visualise_all_classes(train_dataset, test_dataset.classes)
 
+    ######################## Make data loaders #########################
     BATCH_SIZE = 32
     train_dataloader, val_dataloader, test_dataloader = \
         to_dataloaders(
@@ -100,7 +157,7 @@ def main()-> None:
         train_losses_std, train_accuracies_std = None, None
         val_losses_std, val_accuracies_std = None, None
     else:
-        # Use k-fold cross validation
+    ################### Use k-fold cross validation ####################
         train_lossess, train_accuraciess, val_lossess, val_accuraciess, model=\
             train_cross_validation(
                 full_train_dataset=all_train_dataset, 
@@ -136,8 +193,8 @@ def main()-> None:
         OPTIMISER = torch.optim.Adam(
             params=model.parameters(), lr=LEARNING_RATE)
 
-        model, test_dataloader, train_losses, train_accuracies, val_losses, \
-        val_accuracies, train_losses_std, train_accuracies_std, \
+        model, test_dataset, test_dataloader, train_losses, train_accuracies, \
+        val_losses, val_accuracies, train_losses_std, train_accuracies_std, \
         val_losses_std, val_accuracies_std = finetune_cifar10(
             model,
             BATCH_SIZE,
@@ -158,6 +215,7 @@ def main()-> None:
         f"{np.argmax(val_accuracies) + 1}.\033[37m"
     )
 
+    ############## Visualise training accuracy and loss ################
     visualise_training(
         train_losses, 
         train_accuracies, 
@@ -180,7 +238,11 @@ def main()-> None:
         f"\033[32mTest accuracy: {test_accuracy}, "
         f"test loss: {test_loss}\033[37m"
     )
-    # Plot confusion matrix, non-normalised and normalised.
+
+    # Save the model
+    model.save("assignment_3/model_cache")
+
+    ####### Plot confusion matrix, non-normalised and normalised. ######
     plot_confusion_matrix(
         test_labels, 
         test_predictions, 
