@@ -30,7 +30,7 @@ def main()-> None:
     ####################################################################
     #                          Load the data.                          #
     ####################################################################
-    DATASET = "tinyimagenet"
+    DATASET = datasets.CIFAR10
     FINETUNE = False
     AUGMENTATION = False
     ROOT = "assignment_3/data/"
@@ -68,7 +68,7 @@ def main()-> None:
             dataset=DATASET, 
             root=ROOT, 
             train_val_partition=(.8, .2),
-            train_tranform=transforms.Compose([
+            train_transform=transforms.Compose([
                     transforms.RandomHorizontalFlip(p=0.5),
                     transforms.RandomCrop(size=32, padding=4),
                     transforms.ColorJitter(brightness=0.2, contrast=0.2),
