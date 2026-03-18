@@ -24,7 +24,8 @@ def decode_predictions(
     4: confidence there is an object
     5, 6: class confidence scores. 
 
-    :param output: Model output (shape: batch, 343)
+    :param output: Model output (shape: batch, 343) or 
+        (batch, grid_size, grid_size, 7)
     :type output: torch.tensor
     :param grid_size: The size of the grid the image was cut up into.
         Each cell in this grid can contain 1 bounding box.
@@ -45,7 +46,10 @@ def decode_predictions(
         torch.Tensor
     ]
     """
-    cube_output = output.view(-1, grid_size, grid_size, 7)
+    if len(output.shape) > 2:
+        cube_output = output
+    else:
+        cube_output = output.view(-1, grid_size, grid_size, 7)
 
     x = cube_output[..., 0]
     y = cube_output[..., 1]
@@ -58,7 +62,7 @@ def decode_predictions(
     # which we have to 'normalise' using offsets.
     cell_indexes = torch.arange(7)
     column_offsets = cell_indexes.view(1, 1, 7)
-    row_offsets = cell_indexes.view(1, 7, 7)
+    row_offsets = cell_indexes.view(1, 7, 1)
 
     corrected_x = (column_offsets + x) / 7
     corrected_y = (row_offsets + y) / 7

@@ -95,7 +95,8 @@ def main()-> None:
             )),
             transforms.ToTensor()
         ]),
-        input_img_size=CONFIG["general"]["input_image_size"]
+        input_img_size=CONFIG["general"]["input_image_size"],
+        grid_size=CONFIG["general"]["grid_size"]
     )
 
     ####################################################################

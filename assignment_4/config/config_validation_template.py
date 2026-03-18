@@ -44,11 +44,16 @@ CONFIG_TEMPLATE = {
                     'type': 'number',
                     'minimum': 0
                 },
+                'grid_size': {
+                    'type': 'number',
+                    'minimum': 0
+                },
             },
             'required': [
                 'data_images_path', 
                 'data_annotations_path',
                 'input_image_size',
+                'grid_size',
             ],
             'additionalProperties' : False
         },
