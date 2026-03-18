@@ -118,6 +118,7 @@ def train(
     scheduler: torch.optim.lr_scheduler.LRScheduler | None,
     n_epochs: int,
     device: str,
+    grid_size: int
 )-> tuple[list[float], list[float], list[float], list[float]]:
     """
     Train a model for `n_epochs` epochs.
@@ -157,7 +158,8 @@ def train(
             model, 
             loss_fn, 
             optimiser,
-            device
+            device,
+            grid_size
         )
         train_losses.append(train_loss)
         train_accuracies.append(train_accuracy)
@@ -166,7 +168,8 @@ def train(
             val_dataloader, 
             model, 
             loss_fn, 
-            device
+            device,
+            grid_size
         )
 
         if val_accuracy > (
@@ -237,7 +240,8 @@ def val_epoch(
     dataloader: DataLoader, 
     model: nn.Module, 
     loss_fn: nn.Module,
-    device: str
+    device: str,
+    grid_size: int
 )-> tuple[float, float]:
     """
     Validate the accuracy and loss for a given dataset and model.
@@ -260,6 +264,7 @@ def val_epoch(
         for X, y in dataloader:
             X, y = X.to(device), y.to(device)
             y_hat = model(X)
+            y_hat = y_hat.view(-1, grid_size, grid_size, 7)
             test_loss += loss_fn(y_hat, y).item()
             correct += (y_hat.argmax(1) == y).type(torch.float).sum().item()
 
