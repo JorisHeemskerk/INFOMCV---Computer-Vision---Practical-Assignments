@@ -79,7 +79,6 @@ def draw_boxes(
 
     for i in range(len(object_confidence)):
         cls = predicted_class[i].item()
-        print(cls)
         # Colours are friendly for colourblind people.
         color = COLOUR_CAT_NORMALISED if cls == 0 else COLOUR_DOG_NORMALISED
         label = f"{class_names[cls]} {object_confidence[i]:.2f}"

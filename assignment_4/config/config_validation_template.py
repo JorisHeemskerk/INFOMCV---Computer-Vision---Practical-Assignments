@@ -16,6 +16,7 @@ modify this code, at the express notion that a disclaimer was put in.
         data_images_path : _
         data_annotations_path : _
         input_image_size: _
+        grid_size: _
     jobs:
         job0:
             train_val_test_split: _
@@ -25,6 +26,8 @@ modify this code, at the express notion that a disclaimer was put in.
             n_epochs: _
             learning_rate: _
             l1_coefficient: _
+            lambda_coord: _
+            lambda_noobj: _
     ```
 """
 
@@ -89,6 +92,12 @@ CONFIG_TEMPLATE = {
                         },
                         'l1_coefficient': {
                             'type': 'number'
+                        },
+                        'lambda_coord': {
+                            'type': 'number'
+                        },
+                        'lambda_noobj': {
+                            'type': 'number'
                         }
                     },
                     'required': [
@@ -98,7 +107,9 @@ CONFIG_TEMPLATE = {
                         'replacement',
                         'n_epochs',
                         'learning_rate',
-                        'l1_coefficient'
+                        'l1_coefficient',
+                        'lambda_coord',
+                        'lambda_noobj'
                     ],
                     'additionalProperties' : False
                 }

@@ -6,6 +6,8 @@ import torch
 import traceback
 import yaml
 
+import numpy as np
+
 from jsonschema import validate, ValidationError
 from torchvision import transforms
 from torch.utils.data import Dataset
@@ -15,8 +17,10 @@ from cat_dog_dataset import CatDogDataset
 from create_logger import create_logger
 from config.config_validation_template import CONFIG_TEMPLATE
 from data import to_dataloaders
+from train import train
 from visualise import visualise_batch
 from yolov1_base import YOLOv1Base
+from yolov1_loss import YOLOv1Loss
 
 
 def _process_job(
@@ -71,13 +75,66 @@ def _process_job(
         f"{sum(p.numel() for p in model.parameters()):,}"
     )
 
+    model = model.to(DEVICE)
+
     ####################################################################
-    #                     Set the hyperparemeters.                     #
+    #                         Train the model.                         #
     ####################################################################
+    N_EPOCHS = 5
+    LEARNING_RATE = 0.001
+
+    OPTIMISER = torch.optim.Adam(params=model.parameters(), lr=LEARNING_RATE)
+    SCHEDULER = None
+    LOSS_FN = YOLOv1Loss(job["lambda_coord"], job["lambda_noobj"])
+
+    train_losses, train_accuracies, val_losses, val_accuracies, model = \
+        train(
+            train_dataloader=train_dataloader, 
+            val_dataloader=val_dataloader,
+            model=model,
+            loss_fn=LOSS_FN,
+            optimiser=OPTIMISER,
+            scheduler=SCHEDULER,
+            n_epochs=N_EPOCHS,
+            device=DEVICE,
+            grid_size=CONFIG["general"]["grid_size"]
+        )
+    train_losses_std, train_accuracies_std = None, None
+    val_losses_std, val_accuracies_std = None, None
 
     ####################################################################
     #                         Show the results.                        #
     ####################################################################
+    print(
+        f"\033[32mBest  training  accuracy: {max(train_accuracies)}, achieved "
+        f"during epoch {np.argmax(train_accuracies) + 1}.\nBest validation "
+        f"accuracy: {max(val_accuracies)}, achieved during epoch "
+        f"{np.argmax(val_accuracies) + 1}.\033[37m"
+    )
+
+    ############## Visualise training accuracy and loss ################
+    visualise_training(
+        train_losses, 
+        train_accuracies, 
+        val_losses, 
+        val_accuracies,
+        train_losses_std, 
+        train_accuracies_std,
+        val_losses_std, 
+        val_accuracies_std,
+        model_name=model.__class__.__name__
+    )
+
+    test_loss, test_accuracy, test_labels, test_predictions = test_classes(
+        dataloader=test_dataloader,
+        model=model,
+        loss_fn=LOSS_FN,
+        device=DEVICE
+    )
+    print(
+        f"\033[32mTest accuracy: {test_accuracy}, "
+        f"test loss: {test_loss}\033[37m"
+    )
 
 
 
@@ -89,7 +146,10 @@ def main()-> None:
         img_dir=CONFIG["general"]["data_images_path"], 
         ann_dir=CONFIG["general"]["data_annotations_path"], 
         transform=transforms.Compose([
-            transforms.Resize(CONFIG["general"]["input_image_size"]),
+            transforms.Resize((
+                CONFIG["general"]["input_image_size"],
+                CONFIG["general"]["input_image_size"]
+            )),
             transforms.ToTensor()
         ]),
         input_img_size=CONFIG["general"]["input_image_size"],
