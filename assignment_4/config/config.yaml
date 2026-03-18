@@ -12,6 +12,7 @@ general:
     data_images_path : "assignment_4/data/images/"
     data_annotations_path : "assignment_4/data/annotations/"
     input_image_size: 112
+    grid_size: 7
 jobs:
     job0:
         train_val_test_split : [0.8, 0.1, 0.1]

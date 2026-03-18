@@ -146,7 +146,8 @@ def main()-> None:
             transforms.Resize(CONFIG["general"]["input_image_size"]),
             transforms.ToTensor()
         ]),
-        input_img_size=CONFIG["general"]["input_image_size"]
+        input_img_size=CONFIG["general"]["input_image_size"],
+        grid_size=CONFIG["general"]["grid_size"]
     )
 
     ####################################################################

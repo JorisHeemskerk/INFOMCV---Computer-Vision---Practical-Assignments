@@ -1,16 +1,17 @@
 import cv2
 import torch
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 import numpy as np
 
 from torch.utils.data import DataLoader
 
+from decode import decode_predictions
+
 
 COLOUR_CAT = (255, 127, 14)
 COLOUR_DOG = (31, 119, 180)
-COLOUR_CAT_NORMALISED = np.array(COLOUR_CAT) / 255
-COLOUR_DOG_NORMALISED = np.array(COLOUR_DOG) / 255
+COLOUR_CAT_NORMALISED = tuple(np.array(COLOUR_CAT) / 255)
+COLOUR_DOG_NORMALISED = tuple(np.array(COLOUR_DOG) / 255)
 
 
 def draw_boxes(
@@ -78,10 +79,12 @@ def draw_boxes(
 
     for i in range(len(object_confidence)):
         cls = predicted_class[i].item()
+        print(cls)
         # Colours are friendly for colourblind people.
-        color = COLOUR_CAT if cls == 0 else COLOUR_DOG
+        color = COLOUR_CAT_NORMALISED if cls == 0 else COLOUR_DOG_NORMALISED
         label = f"{class_names[cls]} {object_confidence[i]:.2f}"
 
+        # Bounding box.
         cv2.rectangle(
             image, 
             (x1[i].item(), y1[i].item()), 
@@ -89,15 +92,49 @@ def draw_boxes(
             color, 
             2
         )
-        cv2.putText(
-            image, 
+        ################### Label background & text. ###################
+        (label_w, label_h), baseline = cv2.getTextSize(
             label, 
-            (x1[i].item(), y1[i].item() - 5),
             cv2.FONT_HERSHEY_SIMPLEX, 
             0.5, 
-            color, 
             1
         )
+        label_x = x1[i].item()
+        label_y = y1[i].item() - 5
+
+        # If label goes above the image, draw it inside the box top instead.
+        if label_y - label_h - baseline < 0:
+            label_y = y1[i].item() + label_h + baseline
+
+        # If label goes off the right edge, shift it left.
+        if label_x + label_w > img_w:
+            label_x = img_w - label_w
+
+        # Clamp to left edge.
+        label_x = max(0, label_x)
+
+        # Do some funky math to make the label background opaque.
+        overlay = image.copy()
+        cv2.rectangle(
+            overlay,
+            (label_x, label_y - label_h - baseline),
+            (label_x + label_w, label_y + baseline),
+            color,
+            cv2.FILLED
+        )
+        alpha = 0.7
+        cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0, image)
+
+        cv2.putText(
+            image,
+            label,
+            (label_x, label_y),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (1.0, 1.0, 1.0),
+            1
+        )
+
     return image
 
 
@@ -105,43 +142,29 @@ def visualise_batch(dataloader: DataLoader, output_path: str)-> None:
     """
     Visualise a single batch from a dataloader.
 
-    CODE PROVIDED IN ASSIGNMENT.
+    CODE PARTIALLY PROVIDED IN ASSIGNMENT.
 
     :param dataloader: Dataloader to visualise.
     :type dataloader: Dataloader
     :param output_path: Where to save the file to.
     :type output_path: str
     """
-    images, bboxes, labels = next(iter(dataloader))
+    images, targets = next(iter(dataloader))
 
     fig, axes = plt.subplots(1, len(images), figsize=(15, 5))
     if len(images) == 1:
         axes = [axes]
-
-    for i, (img, bbox, label) in enumerate(zip(images, bboxes, labels)):
+            
+    targets = decode_predictions(targets, dataloader.dataset.dataset.grid_size)
+    for i, img in enumerate(images):
         img = img.permute(1, 2, 0).numpy()
+        img = draw_boxes(
+            img,
+            tuple(t[i] for t in targets),
+            0, 
+            dataloader.dataset.dataset.classes
+        ) 
         axes[i].imshow(img)
-
-        for box, lbl in zip(bbox, label):
-            xmin, ymin, xmax, ymax = box.tolist()
-            rect = patches.Rectangle(
-                (xmin, ymin), 
-                xmax - xmin, 
-                ymax - ymin,
-                linewidth=2,
-                edgecolor=COLOUR_CAT_NORMALISED if lbl.item() == 0 \
-                    else COLOUR_DOG_NORMALISED, 
-                facecolor='none'
-            )
-            axes[i].add_patch(rect)
-            axes[i].text(
-                xmin, ymin - 5, 
-                f'{"Cat" if lbl.item() == 0 else "Dog"} (label={lbl.item()})', 
-                color=COLOUR_CAT_NORMALISED if lbl.item() == 0 \
-                    else COLOUR_DOG_NORMALISED, 
-                fontsize=10,
-                bbox=dict(facecolor='white', alpha=0.5)
-            )
         axes[i].axis('off')
     plt.tight_layout()
     plt.savefig(output_path)
