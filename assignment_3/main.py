@@ -17,7 +17,7 @@ from visualise import \
     visualise_training, \
     perform_tSNE, \
     plot_confusion_matrix
-from finetune import finetune_cifar10
+from finetune import finetune_cifar10, finetune_TinyImageNet
 
 
 torch.manual_seed(42)
@@ -108,16 +108,16 @@ def main()-> None:
     #                          Load the model.                         #
     ####################################################################
     N_CLASSES = len(test_dataset.classes)
-    model = LeNet5Base(n_classes=N_CLASSES)
+    # model = LeNet5Base(n_classes=N_CLASSES)
     # model = LeNet5MoreFeatureKernels(
     #     n_classes=N_CLASSES, 
     #     n_first_layer_kernels=32
     # )
-    # model = LeNet5ExtraConvLayer(
-    #     n_classes=N_CLASSES, 
-    #     n_first_layer_kernels=32,
-    #     n_channels=32
-    # )
+    model = LeNet5ExtraConvLayer(
+        n_classes=N_CLASSES, 
+        n_first_layer_kernels=32,
+        n_channels=32
+    )
 
     model.initialize_weights()
     model = model.to(DEVICE)
@@ -203,6 +203,22 @@ def main()-> None:
             K_FOLDS,
             DEVICE,
             SCHEDULER
+        )
+    if DATASET == datasets.CIFAR10 and FINETUNE:
+        OPTIMISER = torch.optim.Adam(
+            params=model.parameters(), lr=LEARNING_RATE)
+
+        model, test_dataset, test_dataloader, train_losses, train_accuracies, \
+        val_losses, val_accuracies, train_losses_std, train_accuracies_std, \
+        val_losses_std, val_accuracies_std = finetune_TinyImageNet(
+            model,
+            BATCH_SIZE,
+            N_EPOCHS,
+            LEARNING_RATE,
+            K_FOLDS,
+            DEVICE,
+            SCHEDULER,
+            ROOT
         )
 
     ####################################################################
