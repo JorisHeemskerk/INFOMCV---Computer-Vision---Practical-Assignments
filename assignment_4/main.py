@@ -89,10 +89,7 @@ def main()-> None:
         img_dir=CONFIG["general"]["data_images_path"], 
         ann_dir=CONFIG["general"]["data_annotations_path"], 
         transform=transforms.Compose([
-            transforms.Resize((
-                CONFIG["general"]["input_image_size"], 
-                CONFIG["general"]["input_image_size"]
-            )),
+            transforms.Resize(CONFIG["general"]["input_image_size"]),
             transforms.ToTensor()
         ]),
         input_img_size=CONFIG["general"]["input_image_size"],
