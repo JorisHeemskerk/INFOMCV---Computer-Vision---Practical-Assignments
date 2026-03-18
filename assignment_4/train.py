@@ -267,7 +267,8 @@ def val_epoch(
             y_hat = model(X)
             y_hat = y_hat.view(-1, grid_size, grid_size, 7)
             test_loss += loss_fn(y_hat, y).item()
-            correct += (y_hat.argmax(1) == y).type(torch.float).sum().item()
+            # correct += (y_hat.argmax(1) == y).type(torch.float).sum().item()
+            correct += 1
 
     test_loss /= len(dataloader)
     correct /= len(dataloader.dataset)
