@@ -110,28 +110,28 @@ def _process_job(
     )
 
     ############## Visualise training accuracy and loss ################
-    # visualise_training(
-    #     train_losses, 
-    #     train_accuracies, 
-    #     val_losses, 
-    #     val_accuracies,
-    #     train_losses_std, 
-    #     train_accuracies_std,
-    #     val_losses_std, 
-    #     val_accuracies_std,
-    #     model_name=model.__class__.__name__
-    # )
+    visualise_training(
+        train_losses, 
+        train_accuracies, 
+        val_losses, 
+        val_accuracies,
+        train_losses_std, 
+        train_accuracies_std,
+        val_losses_std, 
+        val_accuracies_std,
+        model_name=model.__class__.__name__
+    )
 
-    # test_loss, test_accuracy, test_labels, test_predictions = test_classes(
-    #     dataloader=test_dataloader,
-    #     model=model,
-    #     loss_fn=LOSS_FN,
-    #     device=DEVICE
-    # )
-    # print(
-    #     f"\033[32mTest accuracy: {test_accuracy}, "
-    #     f"test loss: {test_loss}\033[37m"
-    # )
+    test_loss, test_accuracy, test_labels, test_predictions = test_classes(
+        dataloader=test_dataloader,
+        model=model,
+        loss_fn=LOSS_FN,
+        device=DEVICE
+    )
+    print(
+        f"\033[32mTest accuracy: {test_accuracy}, "
+        f"test loss: {test_loss}\033[37m"
+    )
 
 
 
@@ -143,7 +143,10 @@ def main()-> None:
         img_dir=CONFIG["general"]["data_images_path"], 
         ann_dir=CONFIG["general"]["data_annotations_path"], 
         transform=transforms.Compose([
-            transforms.Resize(CONFIG["general"]["input_image_size"]),
+            transforms.Resize(
+                CONFIG["general"]["input_image_size"],
+                CONFIG["general"]["input_image_size"]
+            ),
             transforms.ToTensor()
         ]),
         input_img_size=CONFIG["general"]["input_image_size"],
