@@ -101,13 +101,16 @@ def draw_boxes(
     return image
 
 
-# Function to visualize a batch
-def visualize_batch(dataloader: DataLoader)-> None:
+def visualise_batch(dataloader: DataLoader, output_path: str)-> None:
     """
     Visualise a single batch from a dataloader.
 
+    CODE PROVIDED IN ASSIGNMENT.
+
     :param dataloader: Dataloader to visualise.
     :type dataloader: Dataloader
+    :param output_path: Where to save the file to.
+    :type output_path: str
     """
     images, bboxes, labels = next(iter(dataloader))
 
@@ -141,4 +144,4 @@ def visualize_batch(dataloader: DataLoader)-> None:
             )
         axes[i].axis('off')
     plt.tight_layout()
-    plt.show()
+    plt.savefig(output_path)

@@ -1,3 +1,10 @@
+"""
+DISCLAIMER: 
+This code was previously part of Joris Heemskerks Bachelors thesis, 
+and is being re-used here. All rights are reserved to Joris Heemskerk, 
+and Technolution BV, Gouda NL. Joris was granted the rights to use and 
+modify this code, at the express notion that a disclaimer was put in.
+"""
 """ 
 Code is based on:
 https://stackoverflow.com/questions/384076/how-can-i-color-python-logging-output

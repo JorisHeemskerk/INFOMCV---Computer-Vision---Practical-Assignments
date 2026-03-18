@@ -1,3 +1,5 @@
+""" CODE PROVIDED IN ASSIGNMENT. """
+
 import os
 import glob
 import torch
