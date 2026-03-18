@@ -16,6 +16,7 @@ modify this code, at the express notion that a disclaimer was put in.
         data_images_path : _
         data_annotations_path : _
         input_image_size: _
+        grid_size: _
     jobs:
         job0:
             train_val_test_split: _

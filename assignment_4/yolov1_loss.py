@@ -60,36 +60,3 @@ class YOLOv1Loss(nn.Module):
 
         total_loss = loss_xy + loss_wh + loss_conf_obj + loss_conf_noobj + loss_cls
         return total_loss
-
-N, S, C = 2, 7, 2  # batch=2, grid=7x7, classes=2
-
-# Ground truth
-# Most cells are empty (all zeros). We'll place objects in 2 cells.
-y = torch.zeros(N, S, S, 7)
-
-# Batch 0: object in cell (2, 3)
-y[0, 2, 3] = torch.tensor([
-    0.5, 0.4,   # x, y  (relative to cell, so between 0-1)
-    0.3, 0.6,   # w, h  (relative to full image, so between 0-1)
-    1.0,        # conf  (1 = object present)
-    1.0, 0.0    # class probs: class 0
-])
-
-# Batch 1: object in cell (5, 1)
-y[1, 5, 1] = torch.tensor([
-    0.2, 0.7,
-    0.5, 0.4,
-    1.0,
-    0.0, 1.0    # class probs: class 1
-])
-
-# Predictions — in practice this is y_hat = model(X), here we just
-# make something slightly off from ground truth to get a non-zero loss
-y_hat = y.clone()
-y_hat[0, 2, 3] += torch.tensor([0.05, -0.03, 0.02, -0.01, 0.1,  0.05, -0.05])
-y_hat[1, 5, 1] += torch.tensor([-0.1, 0.02, -0.05, 0.03, -0.2, -0.05,  0.05])
-
-# Run it
-criterion = YOLOv1Loss(lambda_coord=5.0, lambda_noobj=0.5)
-loss = criterion(y_hat, y)
-print(loss)  # tensor(0.3207)
