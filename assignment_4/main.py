@@ -181,5 +181,5 @@ if __name__ == "__main__":
             f": {e.message}\x1b[0m"
         ) from e
 
-    # Execute main
+    ## Execute main. ###################################################
     main()
