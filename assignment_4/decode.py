@@ -17,11 +17,11 @@ def decode_predictions(
 
     NOTE: function assumes there are 7 channels in the output, per grid
     cell. Each structured like this:
-    0: confidence there is an object
-    1: center x of bounding box, relative to grid cell (0-1)
-    2: center y of bounding box, relative to grid cell (0-1)
-    3: bounding box width, relative to full image (0-1)
-    4: bounding box height, relative to full image (0-1)
+    0: center x of bounding box, relative to grid cell (0-1)
+    1: center y of bounding box, relative to grid cell (0-1)
+    2: bounding box width, relative to full image (0-1)
+    3: bounding box height, relative to full image (0-1)
+    4: confidence there is an object
     5, 6: class confidence scores. 
 
     :param output: Model output (shape: batch, 343)
@@ -30,12 +30,12 @@ def decode_predictions(
         Each cell in this grid can contain 1 bounding box.
     :type grid_size: int
     :returns: In order (shape=(batch, `grid_size`, `grid_size`)): 
-        object confidences,
         center x coordinates, relative to image (0-1),
         center y coordinates, relative to image (0-1),
         bounding box widths, relative to image (0-1),
         bounding box heights, relative to image (0-1),
-        class labels (0 if dog, 1 if cat), TODO: check if this is correct!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        object confidences,
+        class labels (0 if cat, 1 if dog)
     :rtype: tuple[
         torch.Tensor, 
         torch.Tensor, 
@@ -47,11 +47,11 @@ def decode_predictions(
     """
     cube_output = output.view(-1, grid_size, grid_size, 7)
 
-    object_confidence = cube_output[..., 0]
-    x = cube_output[..., 1]
-    y = cube_output[..., 2]
-    w = cube_output[..., 3]
-    h = cube_output[..., 4]
+    x = cube_output[..., 0]
+    y = cube_output[..., 1]
+    w = cube_output[..., 2]
+    h = cube_output[..., 3]
+    object_confidence = cube_output[..., 4]
     classes = cube_output[..., 5:7]
 
     # x, y centre data is still relative to the respective grid cell,
@@ -66,4 +66,4 @@ def decode_predictions(
     # Combine the cells related to class predictions.
     predicted_class = torch.argmax(classes, dim=-1) 
 
-    return object_confidence, corrected_x, corrected_y, w, h, predicted_class  
+    return corrected_x, corrected_y, w, h, object_confidence, predicted_class  

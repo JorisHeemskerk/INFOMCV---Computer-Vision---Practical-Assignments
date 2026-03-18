@@ -96,11 +96,25 @@ Choice tasks also include a reporting aspect. When applicable, choose one of you
 ## Contact
 Should you have any questions about the assignment, post them in the Assignment channel of the INFOMCV 2026 Teams. If you need help with your code, do not post your code completely. Rather post the chunks to which the question should refer.
 ## Frequently Asked Questions
+
 *Q: Are we allowed to use tutorials?*
+
 A: You can use tutorials as a guideline but we expect you to be able to implement all tasks yourself eventually. Make sure you understand what happens. Do NOT copy existing repositories.
+
+---
+
 *Q: Are we allowed to use high level packages such as Keras, TIMM or HuggingFace)?*
+
 A: No.
+
+---
+
 *Q: Am I going to be marked down for not having great results?*
+
 A: No, this is not meant to be a benchmarking assignment, but you should try your best and be able to explain your results. For the main model, your map@50 should be around 55-60%. With the ResNet-18 backbone, you can get mAP@50 above 80%.
+
+---
+
 *Q: How large should my batch sizes be?*
+
 A: Typically, larger is better but this is up to the hardware that is available to you. A batch size of 8 should work nicely.

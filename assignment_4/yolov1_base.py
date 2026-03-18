@@ -1,3 +1,4 @@
+import logging
 import torch
 from torch import nn
 
@@ -6,11 +7,15 @@ class YOLOv1Base(nn.Module):
     """
     A YOLOv1-inspired model architecture.
     """
-    def __init__(self)-> None:
+    def __init__(self, logger: logging.Logger)-> None:
         """
         Define the convolutional, pooling and fully connected layers.
+        
+        :param logger: Logger to log to.
+        :type logger: logging.Logger
         """
         super().__init__()
+        self.logger = logger
         self.layers = nn.Sequential(
             nn.Conv2d(3, 16, 3, padding=1),
             nn.BatchNorm2d(16),
@@ -78,5 +83,5 @@ class YOLOv1Base(nn.Module):
         :type dir: str
         """
         filename = f"{dir}/best_{self.__class__.__name__}.pth"
-        print(f"\033[36mSaving model...\033[37m")
+        self.logger.info(f"Saving model...")
         torch.save(self, filename)
