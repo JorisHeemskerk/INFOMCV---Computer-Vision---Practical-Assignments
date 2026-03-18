@@ -21,3 +21,5 @@ jobs:
         n_epochs: 100
         learning_rate:  0.00001 # 1e-5
         l1_coefficient: 0.000005 # 5e-6
+        lambda_coord: 1
+        lambda_noobj: 1
