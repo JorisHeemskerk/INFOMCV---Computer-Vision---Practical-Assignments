@@ -55,7 +55,6 @@ class YOLOv1Base(nn.Module):
         )
         self.__initialise_weights()
 
-
     def __initialise_weights(self)-> None:
         """
         Apply kaiming uniform initialization to all layers.
@@ -69,9 +68,10 @@ class YOLOv1Base(nn.Module):
         """
         Perform a forward pass on the network.
 
-        :param x:
+        :param x: Input tensor of shape (batch_size, 3, 112, 112).
         :type x: torch.Tensor
-        :return: Input tensor of shape (batch_size, 3, 112, 112).
+        :return: Output tensor of shape (batch_size, 343)
+        :rtype: torch.Tensor
         """
         return self.layers(x)
 
