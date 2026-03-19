@@ -217,7 +217,7 @@ def train_epoch(
         X, y = X.to(device), y.to(device)
         y_hat = model(X)
         y_hat = y_hat.view(-1, grid_size, grid_size, 7)
-        loss = loss_fn(y_hat, y)
+        loss, _ = loss_fn(y_hat, y)
 
         loss.backward()
         optimiser.step()
@@ -266,7 +266,7 @@ def val_epoch(
             X, y = X.to(device), y.to(device)
             y_hat = model(X)
             y_hat = y_hat.view(-1, grid_size, grid_size, 7)
-            test_loss += loss_fn(y_hat, y).item()
+            test_loss += loss_fn(y_hat, y)[0].item()
             # correct += (y_hat.argmax(1) == y).type(torch.float).sum().item()
             correct += 1
 
@@ -307,7 +307,7 @@ def test_classes(
         for X, y in dataloader:
             X, y = X.to(device), y.to(device)
             y_hat = model(X)
-            test_loss += loss_fn(y_hat, y).item()
+            test_loss += loss_fn(y_hat, y)[0].item()
             
             predictions = y_hat.argmax(1)
             correct += (predictions == y).type(torch.float).sum().item()

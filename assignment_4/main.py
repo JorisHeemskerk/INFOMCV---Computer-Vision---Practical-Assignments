@@ -100,8 +100,8 @@ def _process_job(
     ####################################################################
     #                         Train the model.                         #
     ####################################################################
-    N_EPOCHS = 5
-    LEARNING_RATE = 0.001
+    N_EPOCHS = 50
+    LEARNING_RATE = 0.0001
 
     OPTIMISER = torch.optim.Adam(params=model.parameters(), lr=LEARNING_RATE)
     SCHEDULER = None
