@@ -2,6 +2,7 @@
 
 import os
 import glob
+import logging
 import torch
 import xml.etree.ElementTree as ET
 from torch.utils.data import Dataset
@@ -14,18 +15,22 @@ class CatDogDataset(Dataset):
         img_dir, 
         ann_dir, 
         input_img_size: int, 
-        grid_size: int, 
+        grid_size: int,
+        logger: logging.Logger,
         transform=None
     ):
         self.img_dir = img_dir
         self.ann_dir = ann_dir
         self.input_img_size = input_img_size
         self.grid_size = grid_size
+        self.logger = logger
         self.transform = transform
         self.img_files = sorted(glob.glob(os.path.join(img_dir, "*.png")))
         self.ann_files = sorted(glob.glob(os.path.join(ann_dir, "*.xml")))
         self.label_map = {"cat": 0, "dog": 1}  # Label mapping
         self.classes = list(self.label_map.keys())
+        self._cache_targets()
+        self.logger.debug(f"Initialised dataset, containing {len(self)} items")
 
     def parse_annotation(self, ann_path):
         tree = ET.parse(ann_path)
@@ -125,35 +130,76 @@ class CatDogDataset(Dataset):
             target[row, col, 5:] = class_vec
 
         return target
+    
+    def _cache_targets(self):
+        """
+        Converts all the x-y-x-y-label targets to the output format 
+        expected by the YOLO models. Saves this in cache.
+        """
+        self.logger.debug("Starting caching targets")
+        self._targets = []
+        self._labels = []
+        for i in range(len(self.ann_files)):
+            ann_path = self.ann_files[i]
+            width, height, objects = self.parse_annotation(ann_path)
+            
+            norm_bboxes, labels = [], []
+            for obj in objects:
+                xmin, ymin, xmax, ymax = obj["bbox"]
+                cx, cy, w, h = self.xyxy_to_cxcywh_normalised(
+                    xmin, 
+                    ymin, 
+                    xmax, 
+                    ymax, 
+                    width, 
+                    height
+                )
+                norm_bboxes.append((cx, cy, w, h))
+                labels.append(obj["label"])
+            
+            # reshape to grid_size * grid_size * 7 
+            self._targets.append(self.build_yolo_target(norm_bboxes, labels))
+            self._labels.append(labels[0] if labels else -1)
+        self.logger.debug("Done caching targets")
 
     def __len__(self):
         return len(self.img_files)
 
     def __getitem__(self, idx):
         img_path = self.img_files[idx]
-        ann_path = self.ann_files[idx]
 
         image = Image.open(img_path).convert("RGB")
-        width, height, objects = self.parse_annotation(ann_path)
-
-        norm_bboxes, labels = [], []
-        for obj in objects:
-            xmin, ymin, xmax, ymax = obj["bbox"]
-            cx, cy, w, h = self.xyxy_to_cxcywh_normalised(
-                xmin, 
-                ymin, 
-                xmax, 
-                ymax, 
-                width, 
-                height
-            )
-            norm_bboxes.append((cx, cy, w, h))
-            labels.append(obj["label"])
-        
-        # reshape to grid_size * grid_size * 7 
-        target = self.build_yolo_target(norm_bboxes, labels)
-
         if self.transform:
             image = self.transform(image)
 
-        return image, target
+        return image, self._targets[idx]
+
+
+    # def __getitem__(self, idx):
+    #     img_path = self.img_files[idx]
+    #     ann_path = self.ann_files[idx]
+
+    #     image = Image.open(img_path).convert("RGB")
+    #     width, height, objects = self.parse_annotation(ann_path)
+
+    #     norm_bboxes, labels = [], []
+    #     for obj in objects:
+    #         xmin, ymin, xmax, ymax = obj["bbox"]
+    #         cx, cy, w, h = self.xyxy_to_cxcywh_normalised(
+    #             xmin, 
+    #             ymin, 
+    #             xmax, 
+    #             ymax, 
+    #             width, 
+    #             height
+    #         )
+    #         norm_bboxes.append((cx, cy, w, h))
+    #         labels.append(obj["label"])
+        
+    #     # reshape to grid_size * grid_size * 7 
+    #     target = self.build_yolo_target(norm_bboxes, labels)
+
+    #     if self.transform:
+    #         image = self.transform(image)
+
+    #     return image, target

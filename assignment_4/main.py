@@ -9,6 +9,7 @@ import yaml
 import numpy as np
 
 from jsonschema import validate, ValidationError
+from sklearn.model_selection import train_test_split
 from torchvision import transforms
 from torch.utils.data import Dataset
 from typing import Any
@@ -45,10 +46,29 @@ def _process_job(
     #                      Create the DataLoaders.                     #
     ####################################################################
     logger.debug(f"Splitting the dataset into {job["train_val_test_split"]}.")
-    train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(
-        dataset, 
-        job["train_val_test_split"]
+    labels = dataset._labels
+    indices = list(range(len(dataset)))
+    
+    # Split in a stratisfied manner.
+    train_idx, val_test_idx, _, val_test_labels = train_test_split(
+        indices, 
+        labels,
+        test_size= \
+            job["train_val_test_split"][1] + job["train_val_test_split"][2],
+        stratify=labels,
+        random_state=42
     )
+    val_idx, test_idx = train_test_split(
+        val_test_idx,
+        test_size=job["train_val_test_split"][2] / (
+            job["train_val_test_split"][1] + job["train_val_test_split"][2]
+        ),
+        stratify=val_test_labels,
+        random_state=42
+    )
+    train_dataset = torch.utils.data.Subset(dataset, train_idx)
+    val_dataset = torch.utils.data.Subset(dataset, val_idx)
+    test_dataset = torch.utils.data.Subset(dataset, test_idx)
     logger.debug(
         f"{len(train_dataset)= }, {len(val_dataset)= }, {len(test_dataset)= }"
     )
@@ -145,6 +165,9 @@ def main()-> None:
     dataset = CatDogDataset(
         img_dir=CONFIG["general"]["data_images_path"], 
         ann_dir=CONFIG["general"]["data_annotations_path"], 
+        input_img_size=CONFIG["general"]["input_image_size"],
+        grid_size=CONFIG["general"]["grid_size"],
+        logger=logger,
         transform=transforms.Compose([
             transforms.Resize((
                 CONFIG["general"]["input_image_size"],
@@ -152,8 +175,6 @@ def main()-> None:
             )),
             transforms.ToTensor()
         ]),
-        input_img_size=CONFIG["general"]["input_image_size"],
-        grid_size=CONFIG["general"]["grid_size"]
     )
 
     ####################################################################
