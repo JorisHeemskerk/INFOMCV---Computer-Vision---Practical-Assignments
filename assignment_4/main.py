@@ -100,8 +100,8 @@ def _process_job(
     ####################################################################
     #                         Train the model.                         #
     ####################################################################
-    N_EPOCHS = 50
-    LEARNING_RATE = 0.0001
+    N_EPOCHS = 5
+    LEARNING_RATE = 0.001
 
     OPTIMISER = torch.optim.Adam(params=model.parameters(), lr=LEARNING_RATE)
     SCHEDULER = None
@@ -117,7 +117,8 @@ def _process_job(
             scheduler=SCHEDULER,
             n_epochs=N_EPOCHS,
             device=DEVICE,
-            grid_size=CONFIG["general"]["grid_size"]
+            grid_size=CONFIG["general"]["grid_size"],
+            logger=logger
         )
     train_losses_std, train_accuracies_std = None, None
     val_losses_std, val_accuracies_std = None, None
