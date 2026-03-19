@@ -15,25 +15,25 @@ class YOLOv1Loss(nn.Module):
         y: torch.Tensor,
     )-> tuple(
         torch.Tensor, 
-        tuple[
+        tuple(
             torch.Tensor, 
             torch.Tensor, 
             torch.Tensor, 
             torch.Tensor, 
             torch.Tensor
-        ]
+        )
     ):
         """
         Calculate the YOLO loss based on the prediction & target.
 
         Loss consists of 5 main parts:
         1. Euclidean distance between the (x, y) coordinates.
-        2. a
+        2. Difference between the width and the height (summed).
         3. The squared difference between the objectness scores when 
             there is an object.
         4. The squared difference between the objectness scores when 
             there is no object.
-        5. a
+        5. ??????????????????????????????????????????????????????????????????????????????????????????
 
         Parts 1 and 2 are weighed by `lambda_coord` and 4 is weighed by 
         `lambda_noobj`. The parts are then summed into the final loss.
@@ -69,10 +69,10 @@ class YOLOv1Loss(nn.Module):
             (pred_y - true_y) ** 2
         )).sum()
 
-        # Part 2.
+        # Part 2. TODO: why the sqrt?!?!?!?!?!?!??!1/1//1/1//1/1/1??!?!?!??!/1/1//1/1/1/1//1/1/1
         loss_wh = self.lambda_coord * (obj_mask * (
-            (pred_w.abs().sqrt() - true_w.sqrt()) ** 2 +
-            (pred_h.abs().sqrt() - true_h.sqrt()) ** 2
+            (pred_w.sqrt() - true_w.sqrt()) ** 2 +
+            (pred_h.sqrt() - true_h.sqrt()) ** 2
         )).sum()
 
         # Part 3.
