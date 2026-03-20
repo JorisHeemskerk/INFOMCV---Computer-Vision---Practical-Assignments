@@ -7,6 +7,7 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset, Subset
 from typing import Callable
 from tqdm import tqdm
+from mean_average_precision import compute_map
 
 
 def train_cross_validation(
@@ -151,6 +152,8 @@ def train(
     n_epochs: int,
     device: str,
     grid_size: int,
+    iou_threshold: float,
+    conf_threshold: float,
     logger: logging.Logger
 )-> tuple[
     dict[str, list[float]],
@@ -187,41 +190,46 @@ def train(
         dict[str, list[float]],
         list[float], 
         dict[str, list[float]], 
-        list[float], nn.Module
+        list[float], 
+        nn.Module
     ]
     """
     best = None
-    train_losses_per_epoch, train_accuracies = [], []
-    val_losses_per_epoch,   val_accuracies   = [], []
+    train_losses_per_epoch, train_mAPs = [], []
+    val_losses_per_epoch,   val_mAPs   = [], []
     for _ in tqdm(range(n_epochs), "\033[33mEpoch"):
         print("\033[37m") # Reset colour.
-        train_loss_dict, train_accuracy = train_epoch(
+        train_loss_dict, train_mAP = train_epoch(
             train_dataloader, 
             model, 
             loss_fn, 
             optimiser,
             device,
             grid_size,
+            iou_threshold,
+            conf_threshold,
             logger
         )
         train_losses_per_epoch.append(train_loss_dict)
-        train_accuracies.append(train_accuracy)
+        train_mAPs.append(train_mAP)
 
-        val_loss_dict, val_accuracy = val_epoch(
+        val_loss_dict, val_mAP = val_epoch(
             val_dataloader, 
             model, 
             loss_fn, 
             device,
             grid_size,
+            iou_threshold,
+            conf_threshold,
             logger
         )
 
-        if val_accuracy > (
-            max(val_accuracies) if len(val_accuracies) > 0 else -1
+        if val_mAP > (
+            max(val_mAPs) if len(val_mAPs) > 0 else -1
         ):
             best = copy.deepcopy(model.state_dict())
         val_losses_per_epoch.append(val_loss_dict)
-        val_accuracies.append(val_accuracy)
+        val_mAPs.append(val_mAP)
 
         if scheduler is not None:
             scheduler.step()
@@ -233,7 +241,7 @@ def train(
     keys = train_losses_per_epoch[0].keys()
     train_losses = {k: [d[k] for d in train_losses_per_epoch] for k in keys}
     val_losses   = {k: [d[k] for d in val_losses_per_epoch] for k in keys}
-    return train_losses, train_accuracies, val_losses, val_accuracies, model
+    return train_losses, train_mAPs, val_losses, val_mAPs, model
 
 def train_epoch(
     dataloader: DataLoader, 
@@ -242,6 +250,8 @@ def train_epoch(
     optimiser: torch.optim.Optimizer,
     device: str,
     grid_size: int,
+    iou_threshold: float,
+    conf_threshold: float,
     logger: logging.Logger
 )-> tuple[dict[str, float], float]:
     """
@@ -266,7 +276,9 @@ def train_epoch(
     :rtype: tuple[dict[str, float], float]
     """
     train_losses = {"total": 0, "xy": 0, "wh": 0, "conf_obj": 0, "conf_noobj": 0, "cls": 0}
-    correct = 0
+
+    train_mAPs = []
+
     model.train()
     for batch, (X, y) in enumerate(dataloader):
         X, y = X.to(device), y.to(device)
@@ -285,8 +297,10 @@ def train_epoch(
         train_losses["conf_obj"] += loss_conf_obj.item()
         train_losses["conf_noobj"] += loss_conf_noobj.item()
         train_losses["cls"] += loss_cls.item()
-        # correct += (y_hat.argmax(1) == y).type(torch.float).sum().item()
-        correct += 1
+        
+        train_mAPs.append(
+            compute_map(y_hat, y, iou_threshold, conf_threshold).item()
+        )
 
         if batch % 100 == 0:
             train_loss, current = loss.item(), batch * len(y) + len(X)
@@ -297,9 +311,11 @@ def train_epoch(
                 f"{loss_cls:>2f} | [{current:>5d}/"
                 f"{len(dataloader.dataset):>5d}]"
             )
+    
+    train_mAP = np.mean(train_mAPs)
     return \
         {key: value / len(dataloader) for key, value in train_losses.items()},\
-        100 * (correct / len(dataloader.dataset))
+        train_mAP
 
 def val_epoch(
     dataloader: DataLoader, 
@@ -307,6 +323,8 @@ def val_epoch(
     loss_fn: nn.Module,
     device: str,
     grid_size: int,
+    iou_threshold: float,
+    conf_threshold: float,
     logger: logging.Logger
 )-> tuple[dict[str, float], float]:
     """
@@ -327,7 +345,8 @@ def val_epoch(
     """
     model.eval()
     val_losses = {"total": 0, "xy": 0, "wh": 0, "conf_obj": 0, "conf_noobj": 0, "cls": 0}
-    correct = 0
+
+    val_mAPs = []
 
     with torch.no_grad():
         for X, y in dataloader:
@@ -337,7 +356,6 @@ def val_epoch(
             loss, (
                 loss_xy, loss_wh, loss_conf_obj, loss_conf_noobj, loss_cls
             ) = loss_fn(y_hat, y)
-            test_loss += loss.item()
 
             val_losses["total"] += loss.item()
             val_losses["xy"] += loss_xy.item()
@@ -345,12 +363,14 @@ def val_epoch(
             val_losses["conf_obj"] += loss_conf_obj.item()
             val_losses["conf_noobj"] += loss_conf_noobj.item()
             val_losses["cls"] += loss_cls.item()
-            # correct += (y_hat.argmax(1) == y).type(torch.float).sum().item()
-            correct += 1
-
+            
+            val_mAPs.append(
+                compute_map(y_hat, y, iou_threshold, conf_threshold).item()
+            )
     avg_losses = {
         key: value / len(dataloader) for key, value in val_losses.items()
     }
+    val_mAP = np.mean(val_mAPs)
     logger.debug(
                 f"Validation error | avg loss: {avg_losses["total"]:>7f} | xy "
                 f"loss: {avg_losses["xy"]:>2f}, wh loss: {avg_losses["wh"]:>2f}"
@@ -358,13 +378,17 @@ def val_epoch(
                 f" {avg_losses["conf_noobj"]:>2f}, class loss: "
                 f"{avg_losses["cls"]:>2f} |"
             )
-    return avg_losses, 100 * correct / len(dataloader.dataset)
+    return avg_losses, val_mAP
 
 def test_classes(
     dataloader: DataLoader, 
     model: nn.Module, 
     loss_fn: nn.Module,
-    device: str
+    device: str,
+    grid_size: int,
+    iou_threshold: float,
+    conf_threshold: float,
+    logger: logging.Logger
 ) -> tuple[float, float, np.ndarray, np.ndarray]:
     """
     Test the accuracy and loss for a given dataset and model.
@@ -382,23 +406,32 @@ def test_classes(
     :rtype: tuple[float, float, np.ndarray, np.ndarray]
     """
     model.eval()
-    test_loss, correct = 0, 0
-    all_labels, all_predictions = [], []
+    test_losses = {"total": 0, "xy": 0, "wh": 0, "conf_obj": 0, "conf_noobj": 0, "cls": 0}
+
+    test_mAPs = []
 
     with torch.no_grad():
         for X, y in dataloader:
             X, y = X.to(device), y.to(device)
             y_hat = model(X)
-            test_loss += loss_fn(y_hat, y)[0].item()
+            y_hat = y_hat.view(-1, grid_size, grid_size, 7)
+            loss, (
+                loss_xy, loss_wh, loss_conf_obj, loss_conf_noobj, loss_cls
+            ) = loss_fn(y_hat, y)
             
-            predictions = y_hat.argmax(1)
-            correct += (predictions == y).type(torch.float).sum().item()
+            test_losses["total"] += loss.item()
+            test_losses["xy"] += loss_xy.item()
+            test_losses["wh"] += loss_wh.item()
+            test_losses["conf_obj"] += loss_conf_obj.item()
+            test_losses["conf_noobj"] += loss_conf_noobj.item()
+            test_losses["cls"] += loss_cls.item()
+            
+            test_mAPs.append(
+                compute_map(y_hat, y, iou_threshold, conf_threshold).item()
+            )
+    avg_losses = {
+        key: value / len(dataloader) for key, value in test_losses.items()
+    }
+    test_mAP = np.mean(test_mAPs)
 
-            all_labels.extend(y.cpu().numpy())
-            all_predictions.extend(predictions.cpu().numpy())
-
-    return \
-        test_loss / len(dataloader), \
-        100 * (correct / len(dataloader.dataset)), \
-        np.array(all_labels), \
-        np.array(all_predictions)
+    return avg_losses, test_mAP
