@@ -18,7 +18,7 @@ from cat_dog_dataset import CatDogDataset
 from create_logger import create_logger
 from config.config_validation_template import CONFIG_TEMPLATE
 from data import to_dataloaders
-from train import train
+from train import train, test_classes
 from visualise import visualise_batch
 from yolov1_base import YOLOv1Base
 from yolov1_loss import YOLOv1Loss
@@ -100,10 +100,11 @@ def _process_job(
     ####################################################################
     #                         Train the model.                         #
     ####################################################################
-    N_EPOCHS = 50
-    LEARNING_RATE = 0.0001
 
-    OPTIMISER = torch.optim.Adam(params=model.parameters(), lr=LEARNING_RATE)
+    OPTIMISER = torch.optim.Adam(
+        params=model.parameters(),
+        lr=job["learning_rate"]
+    )
     SCHEDULER = None
     LOSS_FN = YOLOv1Loss(job["lambda_coord"], job["lambda_noobj"])
 
@@ -115,7 +116,7 @@ def _process_job(
             loss_fn=LOSS_FN,
             optimiser=OPTIMISER,
             scheduler=SCHEDULER,
-            n_epochs=N_EPOCHS,
+            n_epochs=job["n_epochs"],
             device=DEVICE,
             grid_size=CONFIG["general"]["grid_size"]
         )
@@ -130,19 +131,6 @@ def _process_job(
         f"during epoch {np.argmax(train_accuracies) + 1}.\nBest validation "
         f"accuracy: {max(val_accuracies)}, achieved during epoch "
         f"{np.argmax(val_accuracies) + 1}.\033[37m"
-    )
-
-    ############## Visualise training accuracy and loss ################
-    visualise_training(
-        train_losses, 
-        train_accuracies, 
-        val_losses, 
-        val_accuracies,
-        train_losses_std, 
-        train_accuracies_std,
-        val_losses_std, 
-        val_accuracies_std,
-        model_name=model.__class__.__name__
     )
 
     test_loss, test_accuracy, test_labels, test_predictions = test_classes(
