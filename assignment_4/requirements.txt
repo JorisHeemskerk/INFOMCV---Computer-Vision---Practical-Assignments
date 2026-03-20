@@ -8,3 +8,4 @@ torchvision==0.25.0+cu130
 pytz==2026.1.post1
 PyYAML==6.0.3
 jsonschema==4.26.0
+plum==2.8.0

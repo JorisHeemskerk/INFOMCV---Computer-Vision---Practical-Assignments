@@ -7,7 +7,11 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset, Subset
 from typing import Callable
 from tqdm import tqdm
+
+import handle_output
+
 from mean_average_precision import compute_map
+from visualise import visualise_batch
 
 
 def train_cross_validation(
@@ -197,8 +201,9 @@ def train(
     best = None
     train_losses_per_epoch, train_mAPs = [], []
     val_losses_per_epoch,   val_mAPs   = [], []
-    for _ in tqdm(range(n_epochs), "\033[33mEpoch"):
-        print("\033[37m") # Reset colour.
+    for i in tqdm(range(n_epochs), "\033[33mEpoch"):
+        print("\033[37m", end="") # Reset colour.
+        logger.info(f"-----===== Epoch {i} (training) =====-----")
         train_loss_dict, train_mAP = train_epoch(
             train_dataloader, 
             model, 
@@ -213,6 +218,7 @@ def train(
         train_losses_per_epoch.append(train_loss_dict)
         train_mAPs.append(train_mAP)
 
+        logger.info(f"-----===== Epoch {i} (validation) =====-----")
         val_loss_dict, val_mAP = val_epoch(
             val_dataloader, 
             model, 
@@ -402,6 +408,8 @@ def test_classes(
     grid_size: int,
     iou_threshold: float,
     conf_threshold: float,
+    plotting_conf_threshold: float,
+    visualise_first_batch: bool,
     logger: logging.Logger
 ) -> tuple[float, float, np.ndarray, np.ndarray]:
     """
@@ -415,6 +423,14 @@ def test_classes(
     :type loss_fn: nn.Module
     :param device: Device to move data to.
     :type device: str
+    :param plotting_conf_threshold: Confidence for plotting the first
+        batch, only used if `visualise_first_batch`.
+    :type plotting_conf_threshold: float
+    :param visualise_first_batch: True if you want to visualise the
+        first batch of predictions along with the ground truth.
+    :type visualise_first_batch: bool
+    :param logger: Logger to log to.
+    :type logger: logging.Logger
     :return: Average validation loss, accuracy, true labels, and 
         predicted labels.
     :rtype: tuple[float, float, np.ndarray, np.ndarray]
@@ -431,10 +447,20 @@ def test_classes(
     test_mAPs = []
 
     with torch.no_grad():
-        for X, y in dataloader:
+        for i, (X, y) in enumerate(dataloader):
             X, y = X.to(device), y.to(device)
             y_hat = model(X)
             y_hat = y_hat.view(-1, grid_size, grid_size, 7)
+            if i == 0 and visualise_first_batch == True:
+                visualise_batch(
+                    X, 
+                    y, 
+                    y_hat, 
+                    plotting_conf_threshold,
+                    dataloader.dataset.dataset.classes, 
+                    f"{handle_output.OUTPUT_DIR}predict_batch_1.png"
+                )
+
             loss, (
                 loss_xy, loss_wh, loss_conf_obj, loss_conf_noobj, loss_cls
             ) = loss_fn(y_hat, y)

@@ -1,8 +1,6 @@
 import argparse
-import datetime
 import logging
 import os
-import pytz
 import torch
 import traceback
 import yaml
@@ -14,6 +12,8 @@ from sklearn.model_selection import train_test_split
 from torchvision import transforms
 from torch.utils.data import Dataset
 from typing import Any
+
+import handle_output
 
 from cat_dog_dataset import CatDogDataset
 from create_logger import create_logger
@@ -43,6 +43,12 @@ def _process_job(
     :param logger: Logger to log to.
     :type logger: logging.Logger
     """
+    # Change output dir to specific job folder.
+    handle_output.OUTPUT_DIR = f"{handle_output.OUTPUT_DIR}job_{job_id}/" if \
+        job_id == 0 else "/".join(
+            handle_output.OUTPUT_DIR.split("/")[:-2]
+        ) + "/job_{job_id}/"
+    os.makedirs(handle_output.OUTPUT_DIR)
     ####################################################################
     #                      Create the DataLoaders.                     #
     ####################################################################
@@ -84,7 +90,11 @@ def _process_job(
 
     # Save quick example of the training dataloader to file.
     logger.debug("Visualising the first batch of the train dataloader.")
-    visualise_batch(train_dataloader, "assignment_4/visualised_batch.png")
+    visualise_batch(
+        train_dataloader, 
+        job["plotting_conf_threshold"], 
+        f"{handle_output.OUTPUT_DIR}train_batch_1_true.png"
+    )
 
     ####################################################################
     #                          Load the model.                         #
@@ -130,11 +140,31 @@ def _process_job(
     #                         Show the results.                        #
     ####################################################################
     print(
-        f"\033[32mBest  training  mAP: {max(train_accuracies)*100:<2f}, achiev"
-        f"ed during epoch {np.argmax(train_accuracies) + 1}.\nBest validation "
-        f"mAP: {max(val_accuracies)*100:<2f}, achieved during epoch "
-        f"{np.argmax(val_accuracies) + 1}.\033[37m"
+        f"\033[32mBest  training  mAP@{job["iou_threshold"]}: "
+        f"{max(train_accuracies)*100:<2f}%, achieved during epoch "
+        f"{np.argmax(train_accuracies) + 1}.\nBest validation "
+        f"mAP@{job["iou_threshold"]}: {max(val_accuracies)*100:<2f}%, "
+        f"achieved during epoch {np.argmax(val_accuracies) + 1}."
     )
+
+    # run to visualise predictions on the first validation batch
+    test_classes(
+        dataloader=val_dataloader,
+        model=model,
+        loss_fn=LOSS_FN,
+        device=DEVICE,
+        grid_size=CONFIG["general"]["grid_size"],
+        iou_threshold=job["iou_threshold"],
+        conf_threshold=job["conf_threshold"],
+        plotting_conf_threshold=job["plotting_conf_threshold"],
+        visualise_first_batch=True,
+        logger=logger
+    )
+    ####################################################################
+    #                          Apply test set.                         #
+    ####################################################################
+    
+    # TODO: comment in once final hyperparameters are selected
 
     # test_loss, test_mAP = test_classes(
     #     dataloader=test_dataloader,
@@ -233,13 +263,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Initialise Logger.
-    date = datetime.datetime.now(
-        tz=pytz.timezone('Europe/Amsterdam')
-    ).strftime('%d-%m-%Y--%H-%M')
-    os.makedirs(f"assignment_4/output/{date}/", exist_ok=True)
+    os.makedirs(handle_output.OUTPUT_DIR, exist_ok=True)
     logger = create_logger(
         name="Computer Vision - Assignment 4", 
-        output_log_file_name=f"process.log"
+        output_log_file_name=f"{handle_output.OUTPUT_DIR}process.log"
     )
     logger.info(f"Provided commandline arguments: {args.__dict__}")
 

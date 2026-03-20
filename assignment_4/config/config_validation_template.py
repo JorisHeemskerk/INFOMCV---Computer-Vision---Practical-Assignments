@@ -28,6 +28,7 @@ modify this code, at the express notion that a disclaimer was put in.
             lambda_noobj: _
             iou_threshold: _
             conf_threshold: _
+            plotting_conf_threshold: _
     ```
 """
 
@@ -94,6 +95,9 @@ CONFIG_TEMPLATE = {
                         },
                         'conf_threshold': {
                             'type': 'number'
+                        },
+                        'plotting_conf_threshold': {
+                            'type': 'number'
                         }
                     },
                     'required': [
@@ -105,6 +109,7 @@ CONFIG_TEMPLATE = {
                         'lambda_noobj',
                         'iou_threshold',
                         'conf_threshold',
+                        'plotting_conf_threshold',
                     ],
                     'additionalProperties' : False
                 }
