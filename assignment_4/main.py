@@ -118,7 +118,8 @@ def _process_job(
             scheduler=SCHEDULER,
             n_epochs=job["n_epochs"],
             device=DEVICE,
-            grid_size=CONFIG["general"]["grid_size"]
+            grid_size=CONFIG["general"]["grid_size"],
+            logger=logger
         )
     train_losses_std, train_accuracies_std = None, None
     val_losses_std, val_accuracies_std = None, None

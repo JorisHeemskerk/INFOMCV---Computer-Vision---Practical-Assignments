@@ -3,8 +3,30 @@ import torch.nn as nn
 
 from decode import unpack_cube
 
+
 class YOLOv1Loss(nn.Module):
-    def __init__(self, lambda_coord: float, lambda_noobj: float):
+    """
+    Class for the YOLOv1 loss function.
+
+    Loss consists of 5 main parts:
+    1. Euclidean distance between the (x, y) coordinates.
+    2. Relative difference between the width and the height (summed)
+    3. The squared difference between the objectness scores when there 
+        is an object.
+    4. The squared difference between the objectness scores when there
+        is an object.
+    5. Sum of Squared Errors, over all classes.
+    """
+
+    def __init__(self, lambda_coord: float, lambda_noobj: float)-> None:
+        """
+        Initialiser for YOLOv1Loss class.
+
+        :param lambda_coord: Scaling factor for losses part 1 and 2.
+        :type lambda_coord: float
+        :param lambda_noobj: Scaling factor for loss part 4.
+        :type lambda_noobj: float
+        """
         super().__init__()
         self.lambda_coord = lambda_coord
         self.lambda_noobj  = lambda_noobj
@@ -13,7 +35,7 @@ class YOLOv1Loss(nn.Module):
         self, 
         y_hat: torch.Tensor, 
         y: torch.Tensor,
-    )-> tuple(
+    )-> tuple[
         torch.Tensor, 
         tuple[
             torch.Tensor, 
@@ -22,18 +44,18 @@ class YOLOv1Loss(nn.Module):
             torch.Tensor, 
             torch.Tensor
         ]
-    ):
+    ]:
         """
         Calculate the YOLO loss based on the prediction & target.
 
         Loss consists of 5 main parts:
         1. Euclidean distance between the (x, y) coordinates.
-        2. a
+        2. Relative difference between the width and the height (summed)
         3. The squared difference between the objectness scores when 
             there is an object.
         4. The squared difference between the objectness scores when 
             there is no object.
-        5. a
+        5. Sum of Squared Errors, over all classes.
 
         Parts 1 and 2 are weighed by `lambda_coord` and 4 is weighed by 
         `lambda_noobj`. The parts are then summed into the final loss.
@@ -71,8 +93,8 @@ class YOLOv1Loss(nn.Module):
 
         # Part 2.
         loss_wh = self.lambda_coord * (obj_mask * (
-            (pred_w.abs().sqrt() - true_w.sqrt()) ** 2 +
-            (pred_h.abs().sqrt() - true_h.sqrt()) ** 2
+            (pred_w.sqrt() - true_w.sqrt()) ** 2 +
+            (pred_h.sqrt() - true_h.sqrt()) ** 2
         )).sum()
 
         # Part 3.
