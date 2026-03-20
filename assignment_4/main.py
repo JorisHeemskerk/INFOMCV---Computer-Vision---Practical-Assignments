@@ -9,6 +9,7 @@ import yaml
 import numpy as np
 
 from jsonschema import validate, ValidationError
+from sklearn.model_selection import train_test_split
 from torchvision import transforms
 from torch.utils.data import Dataset
 from typing import Any
@@ -17,7 +18,7 @@ from cat_dog_dataset import CatDogDataset
 from create_logger import create_logger
 from config.config_validation_template import CONFIG_TEMPLATE
 from data import to_dataloaders
-from train import train
+from train import train, test_classes
 from visualise import visualise_batch
 from yolov1_base import YOLOv1Base
 from yolov1_loss import YOLOv1Loss
@@ -45,10 +46,29 @@ def _process_job(
     #                      Create the DataLoaders.                     #
     ####################################################################
     logger.debug(f"Splitting the dataset into {job["train_val_test_split"]}.")
-    train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(
-        dataset, 
-        job["train_val_test_split"]
+    labels = dataset._labels
+    indices = list(range(len(dataset)))
+    
+    # Split in a stratisfied manner.
+    train_idx, val_test_idx, _, val_test_labels = train_test_split(
+        indices, 
+        labels,
+        test_size= \
+            job["train_val_test_split"][1] + job["train_val_test_split"][2],
+        stratify=labels,
+        random_state=42
     )
+    val_idx, test_idx = train_test_split(
+        val_test_idx,
+        test_size=job["train_val_test_split"][2] / (
+            job["train_val_test_split"][1] + job["train_val_test_split"][2]
+        ),
+        stratify=val_test_labels,
+        random_state=42
+    )
+    train_dataset = torch.utils.data.Subset(dataset, train_idx)
+    val_dataset = torch.utils.data.Subset(dataset, val_idx)
+    test_dataset = torch.utils.data.Subset(dataset, test_idx)
     logger.debug(
         f"{len(train_dataset)= }, {len(val_dataset)= }, {len(test_dataset)= }"
     )
@@ -102,6 +122,29 @@ def _process_job(
     train_losses_std, train_accuracies_std = None, None
     val_losses_std, val_accuracies_std = None, None
 
+    OPTIMISER = torch.optim.Adam(
+        params=model.parameters(),
+        lr=job["learning_rate"]
+    )
+    SCHEDULER = None
+    LOSS_FN = YOLOv1Loss(job["lambda_coord"], job["lambda_noobj"])
+
+    train_losses, train_accuracies, val_losses, val_accuracies, model = \
+        train(
+            train_dataloader=train_dataloader, 
+            val_dataloader=val_dataloader,
+            model=model,
+            loss_fn=LOSS_FN,
+            optimiser=OPTIMISER,
+            scheduler=SCHEDULER,
+            n_epochs=job["n_epochs"],
+            device=DEVICE,
+            grid_size=CONFIG["general"]["grid_size"],
+            logger=logger
+        )
+    train_losses_std, train_accuracies_std = None, None
+    val_losses_std, val_accuracies_std = None, None
+
     ####################################################################
     #                         Show the results.                        #
     ####################################################################
@@ -110,19 +153,6 @@ def _process_job(
         f"during epoch {np.argmax(train_accuracies) + 1}.\nBest validation "
         f"accuracy: {max(val_accuracies)}, achieved during epoch "
         f"{np.argmax(val_accuracies) + 1}.\033[37m"
-    )
-
-    ############## Visualise training accuracy and loss ################
-    visualise_training(
-        train_losses, 
-        train_accuracies, 
-        val_losses, 
-        val_accuracies,
-        train_losses_std, 
-        train_accuracies_std,
-        val_losses_std, 
-        val_accuracies_std,
-        model_name=model.__class__.__name__
     )
 
     test_loss, test_accuracy, test_labels, test_predictions = test_classes(
@@ -145,6 +175,9 @@ def main()-> None:
     dataset = CatDogDataset(
         img_dir=CONFIG["general"]["data_images_path"], 
         ann_dir=CONFIG["general"]["data_annotations_path"], 
+        input_img_size=CONFIG["general"]["input_image_size"],
+        grid_size=CONFIG["general"]["grid_size"],
+        logger=logger,
         transform=transforms.Compose([
             transforms.Resize((
                 CONFIG["general"]["input_image_size"],
@@ -152,8 +185,6 @@ def main()-> None:
             )),
             transforms.ToTensor()
         ]),
-        input_img_size=CONFIG["general"]["input_image_size"],
-        grid_size=CONFIG["general"]["grid_size"]
     )
 
     ####################################################################
@@ -241,5 +272,5 @@ if __name__ == "__main__":
             f": {e.message}\x1b[0m"
         ) from e
 
-    # Execute main
+    ## Execute main. ###################################################
     main()

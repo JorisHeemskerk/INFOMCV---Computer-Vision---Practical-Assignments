@@ -1,62 +1,115 @@
 import torch
 import torch.nn as nn
 
+from decode import unpack_cube
+
 
 class YOLOv1Loss(nn.Module):
-    def __init__(self, lambda_coord: float, lambda_noobj: float):
+    """
+    Class for the YOLOv1 loss function.
+
+    Loss consists of 5 main parts:
+    1. Euclidean distance between the (x, y) coordinates.
+    2. Relative difference between the width and the height (summed)
+    3. The squared difference between the objectness scores when there 
+        is an object.
+    4. The squared difference between the objectness scores when there
+        is an object.
+    5. Sum of Squared Errors, over all classes.
+    """
+
+    def __init__(self, lambda_coord: float, lambda_noobj: float)-> None:
+        """
+        Initialiser for YOLOv1Loss class.
+
+        :param lambda_coord: Scaling factor for losses part 1 and 2.
+        :type lambda_coord: float
+        :param lambda_noobj: Scaling factor for loss part 4.
+        :type lambda_noobj: float
+        """
         super().__init__()
         self.lambda_coord = lambda_coord
         self.lambda_noobj  = lambda_noobj
 
-    def forward(self, y_hat: torch.Tensor, y: torch.Tensor)-> torch.Tensor:
+    def forward(
+        self, 
+        y_hat: torch.Tensor, 
+        y: torch.Tensor,
+    )-> tuple[
+        torch.Tensor, 
+        tuple[
+            torch.Tensor, 
+            torch.Tensor, 
+            torch.Tensor, 
+            torch.Tensor, 
+            torch.Tensor
+        ]
+    ]:
         """
-        y_hat: (N, S, S, 7)  — model predictions
-        y:     (N, S, S, 7)  — ground truth
+        Calculate the YOLO loss based on the prediction & target.
 
-        Tensor layout per cell (7 values, B=1, C=2):
-          [x, y, w, h, conf, class0, class1]
-           0  1  2  3   4      5       6
+        Loss consists of 5 main parts:
+        1. Euclidean distance between the (x, y) coordinates.
+        2. Relative difference between the width and the height (summed)
+        3. The squared difference between the objectness scores when 
+            there is an object.
+        4. The squared difference between the objectness scores when 
+            there is no object.
+        5. Sum of Squared Errors, over all classes.
+
+        Parts 1 and 2 are weighed by `lambda_coord` and 4 is weighed by 
+        `lambda_noobj`. The parts are then summed into the final loss.
+
+        :param y_hat: Prediction tensor.
+        :type y_hat: torch.Tensor
+        :pram y: ground truth / target tensor.
+        :type y: torch.Tensor
+        :return: Summed loss, and a tuple with all the individual parts.
+        :rtype: tuple(
+            torch.Tensor, 
+            tuple[
+                torch.Tensor, 
+                torch.Tensor, 
+                torch.Tensor, 
+                torch.Tensor, 
+                torch.Tensor
+            ]
+        )
         """
-        # --- unpack predictions ---
-        pred_x    = y_hat[..., 0]
-        pred_y    = y_hat[..., 1]
-        pred_w    = y_hat[..., 2]
-        pred_h    = y_hat[..., 3]
-        pred_conf = y_hat[..., 4]
-        pred_cls  = y_hat[..., 5:]   # (N, S, S, 2)
+        pred_x, pred_y, pred_w, pred_h, pred_conf, pred_cls = unpack_cube(
+            y_hat
+        )
+        true_x, true_y, true_w, true_h, true_conf, true_cls = unpack_cube(y)
 
-        # --- unpack ground truth ---
-        true_x    = y[..., 0]
-        true_y    = y[..., 1]
-        true_w    = y[..., 2]
-        true_h    = y[..., 3]
-        true_conf = y[..., 4]        # 1 if object present, else 0
-        true_cls  = y[..., 5:]       # (N, S, S, 2)
+        # Mask when there is or is not an object.
+        obj_mask  = true_conf
+        noobj_mask = 1.0 - obj_mask
 
-        obj_mask  = true_conf        # 1_ij^obj  — shape (N, S, S)
-        noobj_mask = 1.0 - obj_mask  # 1_ij^noobj
-
-        # --- loss 1 & 2: coordinate losses (only where object exists) ---
+        # Part 1.
         loss_xy = self.lambda_coord * (obj_mask * (
             (pred_x - true_x) ** 2 +
             (pred_y - true_y) ** 2
         )).sum()
 
+        # Part 2.
         loss_wh = self.lambda_coord * (obj_mask * (
-            (pred_w.abs().sqrt() - true_w.sqrt()) ** 2 +   # sqrt as in paper
-            (pred_h.abs().sqrt() - true_h.sqrt()) ** 2
+            (pred_w.sqrt() - true_w.sqrt()) ** 2 +
+            (pred_h.sqrt() - true_h.sqrt()) ** 2
         )).sum()
 
-        # --- loss 3: confidence loss where object exists ---
+        # Part 3.
         loss_conf_obj = (obj_mask * (pred_conf - true_conf) ** 2).sum()
 
-        # --- loss 4: confidence loss where NO object exists ---
+        # Part 4.
         loss_conf_noobj = self.lambda_noobj * (
             noobj_mask * (pred_conf - true_conf) ** 2
         ).sum()
 
-        # --- loss 5: class probability loss (only where object exists) ---
+        # Part 5.
         loss_cls = (obj_mask.unsqueeze(-1) * (pred_cls - true_cls) ** 2).sum()
 
-        total_loss = loss_xy + loss_wh + loss_conf_obj + loss_conf_noobj + loss_cls
-        return total_loss
+        total_loss = \
+            loss_xy + loss_wh + loss_conf_obj + loss_conf_noobj + loss_cls
+        return \
+            total_loss, \
+            (loss_xy, loss_wh, loss_conf_obj, loss_conf_noobj, loss_cls)

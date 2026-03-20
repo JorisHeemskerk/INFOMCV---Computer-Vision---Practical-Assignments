@@ -1,5 +1,48 @@
 import torch
 
+def unpack_cube(cube: torch.Tensor)-> tuple[
+    torch.Tensor, 
+    torch.Tensor, 
+    torch.Tensor, 
+    torch.Tensor, 
+    torch.Tensor, 
+    torch.Tensor
+]:
+    """
+    Unpack cubed targets/predictions into the respective components.
+
+    NOTE: function assumes there are 7 channels in the output, per grid
+    cell. Each structured like this:
+    0: center x of bounding box, relative to grid cell (0-1)
+    1: center y of bounding box, relative to grid cell (0-1)
+    2: bounding box width, relative to full image (0-1)
+    3: bounding box height, relative to full image (0-1)
+    4: confidence there is an object
+    5, 6: class confidence scores.
+
+    :returns: In order (shape=(batch, `grid_size`, `grid_size`)): 
+        x component,
+        y component,
+        width component,
+        height component,
+        object confidence component,
+        class label components,
+    :rtype: tuple[
+        torch.Tensor, 
+        torch.Tensor, 
+        torch.Tensor, 
+        torch.Tensor, 
+        torch.Tensor, 
+        torch.Tensor
+    ]
+    """
+    x = cube[..., 0]
+    y = cube[..., 1]
+    w = cube[..., 2]
+    h = cube[..., 3]
+    objectness = cube[..., 4]
+    classes = cube[..., 5:] 
+    return x, y, w, h, objectness, classes
 
 def decode_predictions(
     output: torch.Tensor, 
@@ -51,12 +94,7 @@ def decode_predictions(
     else:
         cube_output = output.view(-1, grid_size, grid_size, 7)
 
-    x = cube_output[..., 0]
-    y = cube_output[..., 1]
-    w = cube_output[..., 2]
-    h = cube_output[..., 3]
-    object_confidence = cube_output[..., 4]
-    classes = cube_output[..., 5:7]
+    x, y, w, h, object_confidence, classes = unpack_cube(cube_output)
 
     # x, y centre data is still relative to the respective grid cell,
     # which we have to 'normalise' using offsets.
