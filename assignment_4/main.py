@@ -100,28 +100,6 @@ def _process_job(
     ####################################################################
     #                         Train the model.                         #
     ####################################################################
-    N_EPOCHS = 5
-    LEARNING_RATE = 0.001
-
-    OPTIMISER = torch.optim.Adam(params=model.parameters(), lr=LEARNING_RATE)
-    SCHEDULER = None
-    LOSS_FN = YOLOv1Loss(job["lambda_coord"], job["lambda_noobj"])
-
-    train_losses, train_accuracies, val_losses, val_accuracies, model = \
-        train(
-            train_dataloader=train_dataloader, 
-            val_dataloader=val_dataloader,
-            model=model,
-            loss_fn=LOSS_FN,
-            optimiser=OPTIMISER,
-            scheduler=SCHEDULER,
-            n_epochs=N_EPOCHS,
-            device=DEVICE,
-            grid_size=CONFIG["general"]["grid_size"]
-        )
-    train_losses_std, train_accuracies_std = None, None
-    val_losses_std, val_accuracies_std = None, None
-
     OPTIMISER = torch.optim.Adam(
         params=model.parameters(),
         lr=job["learning_rate"]
@@ -140,6 +118,8 @@ def _process_job(
             n_epochs=job["n_epochs"],
             device=DEVICE,
             grid_size=CONFIG["general"]["grid_size"],
+            iou_threshold=job["iou_threshold"],
+            conf_threshold=job["conf_threshold"],
             logger=logger
         )
     train_losses_std, train_accuracies_std = None, None
@@ -149,21 +129,29 @@ def _process_job(
     #                         Show the results.                        #
     ####################################################################
     print(
-        f"\033[32mBest  training  accuracy: {max(train_accuracies)}, achieved "
+        f"\033[32mBest  training  mAP: {max(train_accuracies)}, achieved "
         f"during epoch {np.argmax(train_accuracies) + 1}.\nBest validation "
-        f"accuracy: {max(val_accuracies)}, achieved during epoch "
+        f"mAP: {max(val_accuracies)}, achieved during epoch "
         f"{np.argmax(val_accuracies) + 1}.\033[37m"
     )
 
-    test_loss, test_accuracy, test_labels, test_predictions = test_classes(
+    test_loss, test_mAP = test_classes(
         dataloader=test_dataloader,
         model=model,
         loss_fn=LOSS_FN,
-        device=DEVICE
+        device=DEVICE,
+        grid_size=CONFIG["general"]["grid_size"],
+        iou_threshold=job["iou_threshold"],
+        conf_threshold=job["conf_threshold"],
+        logger=logger
     )
     print(
-        f"\033[32mTest accuracy: {test_accuracy}, "
-        f"test loss: {test_loss}\033[37m"
+        f"\033[32mTest mAP: {test_mAP}, "
+        f"Test error | avg loss: {test_loss["total"]:>7f} | xy "
+        f"loss: {test_loss["xy"]:>2f}, wh loss: {test_loss["wh"]:>2f}"
+        f", conf loss: {test_loss["conf_obj"]:>2f}, noobj conf loss:"
+        f" {test_loss["conf_noobj"]:>2f}, class loss: "
+        f"{test_loss["cls"]:>2f} |"
     )
 
 

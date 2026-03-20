@@ -79,7 +79,7 @@ def decode_predictions(
         bounding box widths, relative to image (0-1),
         bounding box heights, relative to image (0-1),
         object confidences,
-        class labels (0 if cat, 1 if dog)
+        class confidence scores ((0-1) if cat, (0-1) if dog)
     :rtype: tuple[
         torch.Tensor, 
         torch.Tensor, 

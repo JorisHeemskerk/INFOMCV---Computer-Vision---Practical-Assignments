@@ -28,6 +28,8 @@ modify this code, at the express notion that a disclaimer was put in.
             l1_coefficient: _
             lambda_coord: _
             lambda_noobj: _
+            iou_threshold: _
+            conf_threshold: _
     ```
 """
 
@@ -97,6 +99,12 @@ CONFIG_TEMPLATE = {
                             'type': 'number'
                         },
                         'lambda_noobj': {
+                            'type': 'number'
+                        },
+                        'iou_threshold': {
+                            'type': 'number'
+                        },
+                        'conf_threshold': {
                             'type': 'number'
                         }
                     },
