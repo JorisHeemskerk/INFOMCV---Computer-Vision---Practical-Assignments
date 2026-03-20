@@ -275,8 +275,14 @@ def train_epoch(
     :return: Average training losses and accuracy over the epoch.
     :rtype: tuple[dict[str, float], float]
     """
-    train_losses = {"total": 0, "xy": 0, "wh": 0, "conf_obj": 0, "conf_noobj": 0, "cls": 0}
-
+    train_losses = {
+        "total": 0, 
+        "xy": 0, 
+        "wh": 0, 
+        "conf_obj": 0, 
+        "conf_noobj": 0, 
+        "cls": 0
+    }
     train_mAPs = []
 
     model.train()
@@ -305,7 +311,8 @@ def train_epoch(
         if batch % 100 == 0:
             train_loss, current = loss.item(), batch * len(y) + len(X)
             logger.debug(
-                f"train loss: {train_loss:>7f} | xy loss: {loss_xy:>2f}, "
+                f"train loss: {train_loss:>7f} | mAP@{iou_threshold}: "
+                f"{np.mean(train_mAPs):>2f} | xy loss: {loss_xy:>2f}, "
                 f"wh loss: {loss_wh:>2f}, conf loss: {loss_conf_obj:>2f}, "
                 f"noobj conf loss: {loss_conf_noobj:>2f}, class loss: "
                 f"{loss_cls:>2f} | [{current:>5d}/"
@@ -344,8 +351,14 @@ def val_epoch(
     :rtype: tuple[dict[str, float], float]
     """
     model.eval()
-    val_losses = {"total": 0, "xy": 0, "wh": 0, "conf_obj": 0, "conf_noobj": 0, "cls": 0}
-
+    val_losses = {
+            "total": 0, 
+            "xy": 0, 
+            "wh": 0, 
+            "conf_obj": 0, 
+            "conf_noobj": 0, 
+            "cls": 0
+        }
     val_mAPs = []
 
     with torch.no_grad():
@@ -372,8 +385,9 @@ def val_epoch(
     }
     val_mAP = np.mean(val_mAPs)
     logger.debug(
-                f"Validation error | avg loss: {avg_losses["total"]:>7f} | xy "
-                f"loss: {avg_losses["xy"]:>2f}, wh loss: {avg_losses["wh"]:>2f}"
+                f"Validation error | mavg loss: {avg_losses["total"]:>7f}"
+                f"  | mAP@{iou_threshold}: {val_mAP:>2f} | xy loss: "
+                f"{avg_losses["xy"]:>2f}, wh loss: {avg_losses["wh"]:>2f}"
                 f", conf loss: {avg_losses["conf_obj"]:>2f}, noobj conf loss:"
                 f" {avg_losses["conf_noobj"]:>2f}, class loss: "
                 f"{avg_losses["cls"]:>2f} |"
@@ -406,8 +420,14 @@ def test_classes(
     :rtype: tuple[float, float, np.ndarray, np.ndarray]
     """
     model.eval()
-    test_losses = {"total": 0, "xy": 0, "wh": 0, "conf_obj": 0, "conf_noobj": 0, "cls": 0}
-
+    test_losses = {
+        "total": 0, 
+        "xy": 0, 
+        "wh": 0, 
+        "conf_obj": 0, 
+        "conf_noobj": 0, 
+        "cls": 0
+    }
     test_mAPs = []
 
     with torch.no_grad():

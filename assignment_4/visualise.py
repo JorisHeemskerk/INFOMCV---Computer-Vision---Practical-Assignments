@@ -52,8 +52,9 @@ def draw_boxes(
     image = image.copy()
     img_h, img_w = image.shape[:2]
 
-    corrected_x, corrected_y, w, h, object_confidence, predicted_class = \
+    corrected_x, corrected_y, w, h, object_confidence, classes = \
         prediction_data
+    predicted_class = torch.argmax(classes, dim=-1) 
     
     # Filter on indices that contain objects with high enough threshold.
     valid_cells = (object_confidence > confidence_threshold)
@@ -167,3 +168,23 @@ def visualise_batch(dataloader: DataLoader, output_path: str)-> None:
         axes[i].axis('off')
     plt.tight_layout()
     plt.savefig(output_path)
+
+# def visualise_batch(X: torch.Tensor, y: torch.Tensor, output_path: str)-> None:
+#     """
+#     :param X: Batch of images.
+#     :param y: Batch of targets (cubed).
+#     """
+
+# def visualise_batch(
+#     X: torch.Tensor, 
+#     y: torch.Tensor, 
+#     y_hat: torch.Tensor, 
+#     output_path: str
+# )-> None:
+#     """
+#     Plots the true labels on top, and the predictions on the bottom.
+
+#     :param X: Batch of images.
+#     :param y: Batch of targets (cubed).
+#     :param y_hat: Batch of prediction targets (cubed).
+#     """

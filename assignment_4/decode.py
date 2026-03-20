@@ -46,7 +46,7 @@ def unpack_cube(cube: torch.Tensor)-> tuple[
 
 def decode_predictions(
     output: torch.Tensor, 
-    grid_size: int
+    grid_size: int | None=None
 )-> tuple[
     torch.Tensor, 
     torch.Tensor, 
@@ -71,15 +71,18 @@ def decode_predictions(
         (batch, grid_size, grid_size, 7)
     :type output: torch.tensor
     :param grid_size: The size of the grid the image was cut up into.
-        Each cell in this grid can contain 1 bounding box.
-    :type grid_size: int
+        Each cell in this grid can contain 1 bounding box. Only needs
+        to be provided, if the `output` is not yet a cube.
+    :type grid_size: int | None
     :returns: In order (shape=(batch, `grid_size`, `grid_size`)): 
         center x coordinates, relative to image (0-1),
         center y coordinates, relative to image (0-1),
         bounding box widths, relative to image (0-1),
         bounding box heights, relative to image (0-1),
         object confidences,
-        class confidence scores ((0-1) if cat, (0-1) if dog)
+        class confidence scores (
+            shape=(batch, `grid_size`, `grid_size`, n_classes)
+        )
     :rtype: tuple[
         torch.Tensor, 
         torch.Tensor, 
@@ -92,6 +95,9 @@ def decode_predictions(
     if len(output.shape) > 2:
         cube_output = output
     else:
+        assert grid_size is not None, \
+            "Provided output was not yet a cube, " \
+            "yet no `grid_size` was provided."
         cube_output = output.view(-1, grid_size, grid_size, 7)
 
     x, y, w, h, object_confidence, classes = unpack_cube(cube_output)
@@ -99,13 +105,10 @@ def decode_predictions(
     # x, y centre data is still relative to the respective grid cell,
     # which we have to 'normalise' using offsets.
     cell_indexes = torch.arange(7)
-    column_offsets = cell_indexes.view(1, 1, 7)
-    row_offsets = cell_indexes.view(1, 7, 1)
+    column_offsets = cell_indexes.view(1, 1, 7).to(y.device)
+    row_offsets = cell_indexes.view(1, 7, 1).to(y.device)
 
     corrected_x = (column_offsets + x) / 7
     corrected_y = (row_offsets + y) / 7
-    
-    # Combine the cells related to class predictions.
-    predicted_class = torch.argmax(classes, dim=-1) 
 
-    return corrected_x, corrected_y, w, h, object_confidence, predicted_class  
+    return corrected_x, corrected_y, w, h, object_confidence, classes  

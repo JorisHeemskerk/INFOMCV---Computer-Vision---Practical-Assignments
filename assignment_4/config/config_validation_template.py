@@ -21,8 +21,6 @@ modify this code, at the express notion that a disclaimer was put in.
         job0:
             train_val_test_split: _
             batch_size : _
-            n_features: _
-            replacement: _
             n_epochs: _
             learning_rate: _
             l1_coefficient: _
@@ -78,21 +76,11 @@ CONFIG_TEMPLATE = {
                             'type': 'number', 
                             'minimum': 1
                         },
-                        'n_features': {
-                            'type': 'number', 
-                            'minimum': 1
-                        },
-                        'replacement': {
-                            'type': 'boolean'
-                        },
                         'n_epochs': {
                             'type': 'number', 
                             'minimum': 1
                         },
                         'learning_rate': {
-                            'type': 'number'
-                        },
-                        'l1_coefficient': {
                             'type': 'number'
                         },
                         'lambda_coord': {
@@ -110,14 +98,13 @@ CONFIG_TEMPLATE = {
                     },
                     'required': [
                         'train_val_test_split',
-                        'batch_size', 
-                        'n_features',
-                        'replacement',
+                        'batch_size',
                         'n_epochs',
                         'learning_rate',
-                        'l1_coefficient',
                         'lambda_coord',
-                        'lambda_noobj'
+                        'lambda_noobj',
+                        'iou_threshold',
+                        'conf_threshold',
                     ],
                     'additionalProperties' : False
                 }

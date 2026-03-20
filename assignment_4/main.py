@@ -1,6 +1,7 @@
 import argparse
 import datetime
 import logging
+import os
 import pytz
 import torch
 import traceback
@@ -129,30 +130,30 @@ def _process_job(
     #                         Show the results.                        #
     ####################################################################
     print(
-        f"\033[32mBest  training  mAP: {max(train_accuracies)}, achieved "
-        f"during epoch {np.argmax(train_accuracies) + 1}.\nBest validation "
-        f"mAP: {max(val_accuracies)}, achieved during epoch "
+        f"\033[32mBest  training  mAP: {max(train_accuracies)*100:<2f}, achiev"
+        f"ed during epoch {np.argmax(train_accuracies) + 1}.\nBest validation "
+        f"mAP: {max(val_accuracies)*100:<2f}, achieved during epoch "
         f"{np.argmax(val_accuracies) + 1}.\033[37m"
     )
 
-    test_loss, test_mAP = test_classes(
-        dataloader=test_dataloader,
-        model=model,
-        loss_fn=LOSS_FN,
-        device=DEVICE,
-        grid_size=CONFIG["general"]["grid_size"],
-        iou_threshold=job["iou_threshold"],
-        conf_threshold=job["conf_threshold"],
-        logger=logger
-    )
-    print(
-        f"\033[32mTest mAP: {test_mAP}, "
-        f"Test error | avg loss: {test_loss["total"]:>7f} | xy "
-        f"loss: {test_loss["xy"]:>2f}, wh loss: {test_loss["wh"]:>2f}"
-        f", conf loss: {test_loss["conf_obj"]:>2f}, noobj conf loss:"
-        f" {test_loss["conf_noobj"]:>2f}, class loss: "
-        f"{test_loss["cls"]:>2f} |"
-    )
+    # test_loss, test_mAP = test_classes(
+    #     dataloader=test_dataloader,
+    #     model=model,
+    #     loss_fn=LOSS_FN,
+    #     device=DEVICE,
+    #     grid_size=CONFIG["general"]["grid_size"],
+    #     iou_threshold=job["iou_threshold"],
+    #     conf_threshold=job["conf_threshold"],
+    #     logger=logger
+    # )
+    # print(
+    #     f"\033[32mTest mAP: {test_mAP}, "
+    #     f"Test error | avg loss: {test_loss["total"]:>7f} | xy "
+    #     f"loss: {test_loss["xy"]:>2f}, wh loss: {test_loss["wh"]:>2f}"
+    #     f", conf loss: {test_loss["conf_obj"]:>2f}, noobj conf loss:"
+    #     f" {test_loss["conf_noobj"]:>2f}, class loss: "
+    #     f"{test_loss["cls"]:>2f} |"
+    # )
 
 
 
@@ -233,11 +234,12 @@ if __name__ == "__main__":
 
     # Initialise Logger.
     date = datetime.datetime.now(
-        tz=pytz.timezone('Europe/Amsterdam')).strftime('%d-%m-%Y--%H-%M'
-    )
+        tz=pytz.timezone('Europe/Amsterdam')
+    ).strftime('%d-%m-%Y--%H-%M')
+    os.makedirs(f"assignment_4/output/{date}/", exist_ok=True)
     logger = create_logger(
         name="Computer Vision - Assignment 4", 
-        output_log_file_name=f"assignment_4/logging/{date}.log"
+        output_log_file_name=f"process.log"
     )
     logger.info(f"Provided commandline arguments: {args.__dict__}")
 

@@ -102,22 +102,23 @@ class CatDogDataset(Dataset):
         :returns: YOLO compatible target.
         :rtype: torch.Tensor
         """
-        # Shorten the grid_size, for improved reading clarity.
-        S = self.grid_size
-
-        # 5 for [x, y, w, y, objectness]
-        target = torch.zeros(S, S, 5 + len(self.label_map))
+        target = torch.zeros(
+            self.grid_size, 
+            self.grid_size, 
+            # 5 for [x, y, w, y, objectness]
+            5 + len(self.label_map)
+        )
 
         for (cx, cy, w, h), label in zip(norm_bboxes, labels):
             if label < 0:
                 continue
 
             # Translate x, y to cell in grid.
-            col = min(int(cx * S), S - 1)
-            row = min(int(cy * S), S - 1)
+            col = min(int(cx * self.grid_size), self.grid_size - 1)
+            row = min(int(cy * self.grid_size), self.grid_size - 1)
 
-            x_cell = cx * S - col
-            y_cell = cy * S - row
+            x_cell = cx * self.grid_size - col
+            y_cell = cy * self.grid_size - row
 
             class_vec = torch.zeros(len(self.label_map))
             class_vec[label] = 1.0
