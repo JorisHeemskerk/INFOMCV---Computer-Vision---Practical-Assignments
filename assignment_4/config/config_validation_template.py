@@ -26,7 +26,7 @@ modify this code, at the express notion that a disclaimer was put in.
             l1_coefficient: _
             lambda_coord: _
             lambda_noobj: _
-            iou_threshold: _
+            iou_thresholds: _
             conf_threshold: _
             plotting_conf_threshold: _
     ```
@@ -90,8 +90,10 @@ CONFIG_TEMPLATE = {
                         'lambda_noobj': {
                             'type': 'number'
                         },
-                        'iou_threshold': {
-                            'type': 'number'
+                        'iou_thresholds': {
+                            'type': 'array',
+                            'items': {'type': 'number'},
+                            'minItems': 1,
                         },
                         'conf_threshold': {
                             'type': 'number'
@@ -107,7 +109,7 @@ CONFIG_TEMPLATE = {
                         'learning_rate',
                         'lambda_coord',
                         'lambda_noobj',
-                        'iou_threshold',
+                        'iou_thresholds',
                         'conf_threshold',
                         'plotting_conf_threshold',
                     ],

@@ -1,11 +1,11 @@
 import argparse
 import logging
+import numpy as np
 import os
+import shutil
 import torch
 import traceback
 import yaml
-
-import numpy as np
 
 from jsonschema import validate, ValidationError
 from sklearn.model_selection import train_test_split
@@ -19,8 +19,9 @@ from cat_dog_dataset import CatDogDataset
 from create_logger import create_logger
 from config.config_validation_template import CONFIG_TEMPLATE
 from data import to_dataloaders
+from early_stopper import EarlyStopper
 from train import train, test_classes
-from visualise import visualise_batch
+from visualise import visualise_batch, visualise_training
 from yolov1_base import YOLOv1Base
 from yolov1_loss import YOLOv1Loss
 
@@ -47,7 +48,7 @@ def _process_job(
     handle_output.OUTPUT_DIR = f"{handle_output.OUTPUT_DIR}job_{job_id}/" if \
         job_id == 0 else "/".join(
             handle_output.OUTPUT_DIR.split("/")[:-2]
-        ) + "/job_{job_id}/"
+        ) + f"/job_{job_id}/"
     os.makedirs(handle_output.OUTPUT_DIR)
     ####################################################################
     #                      Create the DataLoaders.                     #
@@ -113,12 +114,17 @@ def _process_job(
     ####################################################################
     OPTIMISER = torch.optim.Adam(
         params=model.parameters(),
-        lr=job["learning_rate"]
+        lr=job["learning_rate"],
+        weight_decay=1e-4
     )
     SCHEDULER = None
+    SCHEDULER = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        OPTIMISER, mode='min', patience=10, factor=0.5
+    )
     LOSS_FN = YOLOv1Loss(job["lambda_coord"], job["lambda_noobj"])
+    EARLY_STOPPER = EarlyStopper(15, 0.0)
 
-    train_losses, train_accuracies, val_losses, val_accuracies, model = \
+    train_losses, train_mAPs, val_losses, val_mAPs, model = \
         train(
             train_dataloader=train_dataloader, 
             val_dataloader=val_dataloader,
@@ -126,25 +132,51 @@ def _process_job(
             loss_fn=LOSS_FN,
             optimiser=OPTIMISER,
             scheduler=SCHEDULER,
+            early_stopper=EARLY_STOPPER,
             n_epochs=job["n_epochs"],
             device=DEVICE,
             grid_size=CONFIG["general"]["grid_size"],
-            iou_threshold=job["iou_threshold"],
+            iou_thresholds=job["iou_thresholds"],
             conf_threshold=job["conf_threshold"],
             logger=logger
         )
-    train_losses_std, train_accuracies_std = None, None
-    val_losses_std, val_accuracies_std = None, None
+    train_losses_std, train_mAPs_std = None, None
+    val_losses_std, val_mAPs_std = None, None
 
+    model.save(handle_output.OUTPUT_DIR)
     ####################################################################
     #                         Show the results.                        #
     ####################################################################
-    print(
-        f"\033[32mBest  training  mAP@{job["iou_threshold"]}: "
-        f"{max(train_accuracies)*100:<2f}%, achieved during epoch "
-        f"{np.argmax(train_accuracies) + 1}.\nBest validation "
-        f"mAP@{job["iou_threshold"]}: {max(val_accuracies)*100:<2f}%, "
-        f"achieved during epoch {np.argmax(val_accuracies) + 1}."
+    # TODO: what if the first threshold is not the best for this?
+    mAP_train_string = ", ".join(
+        f"mAP@{threshold}: {np.max(train_mAPs[str(threshold)])*100:<2f}"
+        for threshold in job["iou_thresholds"]
+    )
+    train_best_epoch = np.argmax(train_mAPs[str(job["iou_thresholds"][0])]) + 1
+    mAP_val_string = ", ".join(
+        f"mAP@{threshold}: {np.max(val_mAPs[str(threshold)])*100:<2f}"
+        for threshold in job["iou_thresholds"]
+    )
+    val_best_epoch = np.argmax(val_mAPs[str(job["iou_thresholds"][0])]) + 1
+    logger.critical(
+        f"Best training scores: {mAP_train_string} | "
+        f"achieved during epoch {train_best_epoch}."
+    )
+    logger.critical(
+        f"Best validation scores: {mAP_val_string} | "
+        f"achieved during epoch {val_best_epoch}."
+    )
+
+    visualise_training(
+        train_losses, 
+        train_mAPs, 
+        val_losses, 
+        val_mAPs, 
+        handle_output.OUTPUT_DIR,
+        train_losses_std, 
+        train_mAPs_std, 
+        val_losses_std, 
+        val_mAPs_std
     )
 
     # run to visualise predictions on the first validation batch
@@ -154,7 +186,7 @@ def _process_job(
         loss_fn=LOSS_FN,
         device=DEVICE,
         grid_size=CONFIG["general"]["grid_size"],
-        iou_threshold=job["iou_threshold"],
+        iou_thresholds=job["iou_thresholds"],
         conf_threshold=job["conf_threshold"],
         plotting_conf_threshold=job["plotting_conf_threshold"],
         visualise_first_batch=True,
@@ -172,7 +204,7 @@ def _process_job(
     #     loss_fn=LOSS_FN,
     #     device=DEVICE,
     #     grid_size=CONFIG["general"]["grid_size"],
-    #     iou_threshold=job["iou_threshold"],
+    #     iou_thresholds=job["iou_thresholds"],
     #     conf_threshold=job["conf_threshold"],
     #     logger=logger
     # )
@@ -288,6 +320,7 @@ if __name__ == "__main__":
             "\x1b[31;1mA validation error occurred in the config file" \
             f": {e.message}\x1b[0m"
         ) from e
+    shutil.copy(args.config_file_path, handle_output.OUTPUT_DIR + "config.yml")
 
     ## Execute main. ###################################################
     main()

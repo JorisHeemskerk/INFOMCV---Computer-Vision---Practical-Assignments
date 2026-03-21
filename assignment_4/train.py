@@ -10,6 +10,7 @@ from tqdm import tqdm
 
 import handle_output
 
+from early_stopper import EarlyStopper
 from mean_average_precision import compute_map
 from visualise import visualise_batch
 
@@ -153,10 +154,11 @@ def train(
     loss_fn: nn.Module, 
     optimiser: torch.optim.Optimizer,
     scheduler: torch.optim.lr_scheduler.LRScheduler | None,
+    early_stopper: EarlyStopper,
     n_epochs: int,
     device: str,
     grid_size: int,
-    iou_threshold: float,
+    iou_thresholds: list[float],
     conf_threshold: float,
     logger: logging.Logger
 )-> tuple[
@@ -199,54 +201,64 @@ def train(
     ]
     """
     best = None
-    train_losses_per_epoch, train_mAPs = [], []
-    val_losses_per_epoch,   val_mAPs   = [], []
+    train_losses_per_epoch, train_mAPs_per_epoch = [], []
+    val_losses_per_epoch,   val_mAPs_per_epoch   = [], []
     for i in tqdm(range(n_epochs), "\033[33mEpoch"):
         print("\033[37m", end="") # Reset colour.
         logger.info(f"-----===== Epoch {i} (training) =====-----")
-        train_loss_dict, train_mAP = train_epoch(
+        train_loss_dict, train_mAPs = train_epoch(
             train_dataloader, 
             model, 
             loss_fn, 
             optimiser,
             device,
             grid_size,
-            iou_threshold,
+            iou_thresholds,
             conf_threshold,
             logger
         )
         train_losses_per_epoch.append(train_loss_dict)
-        train_mAPs.append(train_mAP)
+        train_mAPs_per_epoch.append(train_mAPs)
 
         logger.info(f"-----===== Epoch {i} (validation) =====-----")
-        val_loss_dict, val_mAP = val_epoch(
+        val_loss_dict, val_mAPs = val_epoch(
             val_dataloader, 
             model, 
             loss_fn, 
             device,
             grid_size,
-            iou_threshold,
+            iou_thresholds,
             conf_threshold,
             logger
         )
 
-        if val_mAP > (
-            max(val_mAPs) if len(val_mAPs) > 0 else -1
+        # TODO: what if the first threshold is not the best for this?
+        if val_mAPs[str(iou_thresholds[0])] > (
+            max(
+                [d[str(iou_thresholds[0])] for d in val_mAPs_per_epoch]
+            ) if len(val_mAPs_per_epoch) > 0 else -1
         ):
             best = copy.deepcopy(model.state_dict())
         val_losses_per_epoch.append(val_loss_dict)
-        val_mAPs.append(val_mAP)
+        val_mAPs_per_epoch.append(val_mAPs)
 
         if scheduler is not None:
-            scheduler.step()
-    
+            scheduler.step(val_loss_dict["total"])
+
+        if early_stopper.should_stop(val_loss_dict["total"]):
+            logger.warning(f"Decided to stop early, at epoch {i}")
+            break
+
     logger.info("Done training")
     model.load_state_dict(best)
     
     # Translate list of dicts to dict of lists.
-    keys = train_losses_per_epoch[0].keys()
-    train_losses = {k: [d[k] for d in train_losses_per_epoch] for k in keys}
-    val_losses   = {k: [d[k] for d in val_losses_per_epoch] for k in keys}
+    l_keys = train_losses_per_epoch[0].keys()
+    mAP_keys = train_mAPs_per_epoch[0].keys()
+    train_losses = {k: [d[k] for d in train_losses_per_epoch] for k in l_keys}
+    train_mAPs = {k: [d[k] for d in train_mAPs_per_epoch] for k in mAP_keys}
+    val_losses = {k: [d[k] for d in val_losses_per_epoch] for k in l_keys}
+    val_mAPs= {k: [d[k] for d in val_mAPs_per_epoch] for k in mAP_keys}
     return train_losses, train_mAPs, val_losses, val_mAPs, model
 
 def train_epoch(
@@ -256,7 +268,7 @@ def train_epoch(
     optimiser: torch.optim.Optimizer,
     device: str,
     grid_size: int,
-    iou_threshold: float,
+    iou_thresholds: list[float],
     conf_threshold: float,
     logger: logging.Logger
 )-> tuple[dict[str, float], float]:
@@ -289,7 +301,7 @@ def train_epoch(
         "conf_noobj": 0, 
         "cls": 0
     }
-    train_mAPs = []
+    train_mAPs = {str(iou_threshold): [] for iou_threshold in iou_thresholds}
 
     model.train()
     for batch, (X, y) in enumerate(dataloader):
@@ -310,25 +322,33 @@ def train_epoch(
         train_losses["conf_noobj"] += loss_conf_noobj.item()
         train_losses["cls"] += loss_cls.item()
         
-        train_mAPs.append(
-            compute_map(y_hat, y, iou_threshold, conf_threshold).item()
-        )
+        for iou_threshold in train_mAPs.keys():
+            train_mAPs[iou_threshold].append(
+                compute_map(
+                    y_hat, 
+                    y, 
+                    float(iou_threshold), 
+                    conf_threshold
+                ).item()
+            )
 
         if batch % 100 == 0:
             train_loss, current = loss.item(), batch * len(y) + len(X)
+            mAP_string = ", ".join(
+                f"mAP@{threshold}: {np.mean(train_mAPs[threshold]):>2f}"
+                for threshold in train_mAPs.keys()
+            )
             logger.debug(
-                f"train loss: {train_loss:>7f} | mAP@{iou_threshold}: "
-                f"{np.mean(train_mAPs):>2f} | xy loss: {loss_xy:>2f}, "
-                f"wh loss: {loss_wh:>2f}, conf loss: {loss_conf_obj:>2f}, "
-                f"noobj conf loss: {loss_conf_noobj:>2f}, class loss: "
-                f"{loss_cls:>2f} | [{current:>5d}/"
+                f"train loss: {train_loss:>7f} | {mAP_string} | xy loss: "
+                f"{loss_xy:>2f}, wh loss: {loss_wh:>2f}, conf loss: "
+                f"{loss_conf_obj:>2f}, noobj conf loss: {loss_conf_noobj:>2f},"
+                f" class loss: {loss_cls:>2f} | [{current:>5d}/"
                 f"{len(dataloader.dataset):>5d}]"
             )
     
-    train_mAP = np.mean(train_mAPs)
     return \
         {key: value / len(dataloader) for key, value in train_losses.items()},\
-        train_mAP
+        {key: np.mean(value) for key, value in train_mAPs.items()}
 
 def val_epoch(
     dataloader: DataLoader, 
@@ -336,7 +356,7 @@ def val_epoch(
     loss_fn: nn.Module,
     device: str,
     grid_size: int,
-    iou_threshold: float,
+    iou_thresholds: list[float],
     conf_threshold: float,
     logger: logging.Logger
 )-> tuple[dict[str, float], float]:
@@ -365,7 +385,7 @@ def val_epoch(
             "conf_noobj": 0, 
             "cls": 0
         }
-    val_mAPs = []
+    val_mAPs = {str(iou_threshold): [] for iou_threshold in iou_thresholds}
 
     with torch.no_grad():
         for X, y in dataloader:
@@ -383,22 +403,32 @@ def val_epoch(
             val_losses["conf_noobj"] += loss_conf_noobj.item()
             val_losses["cls"] += loss_cls.item()
             
-            val_mAPs.append(
-                compute_map(y_hat, y, iou_threshold, conf_threshold).item()
-            )
+            for iou_threshold in val_mAPs.keys():
+                val_mAPs[iou_threshold].append(
+                    compute_map(
+                        y_hat, 
+                        y, 
+                        float(iou_threshold), 
+                        conf_threshold
+                    ).item()
+                )
     avg_losses = {
         key: value / len(dataloader) for key, value in val_losses.items()
     }
-    val_mAP = np.mean(val_mAPs)
+    val_mAPs = {key: np.mean(value) for key, value in val_mAPs.items()}
+
+    mAP_string = ", ".join(
+        f"mAP@{threshold}: {np.mean(val_mAPs[threshold]):>2f}"
+        for threshold in val_mAPs.keys()
+    )
     logger.debug(
-                f"Validation error | mavg loss: {avg_losses["total"]:>7f}"
-                f"  | mAP@{iou_threshold}: {val_mAP:>2f} | xy loss: "
-                f"{avg_losses["xy"]:>2f}, wh loss: {avg_losses["wh"]:>2f}"
-                f", conf loss: {avg_losses["conf_obj"]:>2f}, noobj conf loss:"
-                f" {avg_losses["conf_noobj"]:>2f}, class loss: "
-                f"{avg_losses["cls"]:>2f} |"
-            )
-    return avg_losses, val_mAP
+        f"Validation error | avg loss: {avg_losses["total"]:>7f} | "
+        f"{mAP_string} | xy loss: {avg_losses["xy"]:>2f}, wh loss: "
+        f"{avg_losses["wh"]:>2f}, conf loss: {avg_losses["conf_obj"]:>2f}, "
+        F"noobj conf loss: {avg_losses["conf_noobj"]:>2f}, class loss: "
+        f"{avg_losses["cls"]:>2f} |"
+    )
+    return avg_losses, val_mAPs
 
 def test_classes(
     dataloader: DataLoader, 
@@ -406,7 +436,7 @@ def test_classes(
     loss_fn: nn.Module,
     device: str,
     grid_size: int,
-    iou_threshold: float,
+    iou_thresholds: list[float],
     conf_threshold: float,
     plotting_conf_threshold: float,
     visualise_first_batch: bool,
@@ -444,7 +474,7 @@ def test_classes(
         "conf_noobj": 0, 
         "cls": 0
     }
-    test_mAPs = []
+    test_mAPs = {str(iou_threshold): [] for iou_threshold in iou_thresholds}
 
     with torch.no_grad():
         for i, (X, y) in enumerate(dataloader):
@@ -472,12 +502,16 @@ def test_classes(
             test_losses["conf_noobj"] += loss_conf_noobj.item()
             test_losses["cls"] += loss_cls.item()
             
-            test_mAPs.append(
-                compute_map(y_hat, y, iou_threshold, conf_threshold).item()
-            )
-    avg_losses = {
-        key: value / len(dataloader) for key, value in test_losses.items()
-    }
-    test_mAP = np.mean(test_mAPs)
+            for iou_threshold in test_mAPs.keys():
+                test_mAPs[iou_threshold].append(
+                    compute_map(
+                        y_hat, 
+                        y, 
+                        float(iou_threshold), 
+                        conf_threshold
+                    ).item()
+                )
 
-    return avg_losses, test_mAP
+    return \
+        {key: value / len(dataloader) for key, value in test_losses.items()}, \
+        {key: np.mean(value) for key, value in test_mAPs.items()}

@@ -223,5 +223,6 @@ output/*
 *.ipynb
 *.pth
 output/*/
+*.yml
 
 .vscode/

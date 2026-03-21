@@ -17,10 +17,10 @@ jobs:
     job0:
         train_val_test_split : [.8, .1, .1]
         batch_size : 8
-        n_epochs: 1
+        n_epochs: 100
         learning_rate:  .00001 # 1e-5
         lambda_coord: 5
         lambda_noobj: .5
-        iou_threshold: .5
+        iou_thresholds: [.5, .9]
         conf_threshold: .01
         plotting_conf_threshold: .5
