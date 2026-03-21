@@ -436,7 +436,7 @@ def visualise_training(
     fig_all, axes_all = plt.subplots(
         nrows=n_losses // 2, 
         ncols=2, 
-        figsize=(5 * n_losses // 2, 8)
+        figsize=(12, 16)
     )
     axes_all = axes_all.flatten()
 

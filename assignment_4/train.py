@@ -16,27 +16,30 @@ from visualise import visualise_batch
 
 
 def train_cross_validation(
-    full_train_dataset: Dataset, 
+    full_train_dataset: Dataset,
     k_folds: int,
     dataset_to_dataloader_function: Callable,
     model: nn.Module,
-    loss_fn: nn.Module, 
+    loss_fn: nn.Module,
     optimiser: torch.optim.Optimizer,
     scheduler: torch.optim.lr_scheduler.LRScheduler | None,
+    early_stopper: EarlyStopper,
     n_epochs: int,
     device: str,
     grid_size: int,
+    iou_thresholds: list[float],
+    conf_threshold: float,
     logger: logging.Logger
-)-> tuple[
-    dict[str, np.ndarray], 
-    np.ndarray, 
-    dict[str, np.ndarray], 
-    np.ndarray, 
+) -> tuple[
+    dict[str, np.ndarray],
+    dict[str, np.ndarray],
+    dict[str, np.ndarray],
+    dict[str, np.ndarray],
     nn.Module
 ]:
     """
     Train a model for `n_epochs` epochs using k-fold cross validation.
-
+ 
     :param full_train_dataset: Dataset to train with.
     :type full_train_dataset: Dataset
     :param k_folds: The number of folds to use.
@@ -49,31 +52,41 @@ def train_cross_validation(
     :type optimiser: torch.optim.Optimizer
     :param scheduler: Scheduler to change how the learning rate adapts.
     :type scheduler: torch.optim.lr_scheduler.LRScheduler | None
+    :param early_stopper: Early stopper to halt training when validation
+        loss stops improving.
+    :type early_stopper: EarlyStopper
     :param n_epochs: Number of epochs to train for.
     :type n_epochs: int
     :param device: Device to move data to.
     :type device: str
     :param grid_size: Size of the grid.
-    :param grid_size: int
+    :type grid_size: int
+    :param iou_thresholds: IoU thresholds at which to compute mAP.
+    :type iou_thresholds: list[float]
+    :param conf_threshold: Confidence threshold for filtering 
+        predictions when computing mAP.
+    :type conf_threshold: float
     :param logger: Logger to log to.
     :type logger: logging.Logger
-    :return: Per epoch train losses, accuracies and validation losses 
-        and accuracies. Along with model with the best val accuracy.
+    :return: Per epoch train losses, train mAPs, validation losses, and
+        validation mAPs, each as a dict mapping keys to arrays of shape
+        (k_folds, n_epochs). Along with the model checkpoint that 
+        achieved the best validation mAP across all folds.
     :rtype: tuple[
-        dict[str, np.ndarray], 
-        np.ndarray, 
-        dict[str, np.ndarray], 
-        np.ndarray, 
+        dict[str, np.ndarray],
+        dict[str, np.ndarray],
+        dict[str, np.ndarray],
+        dict[str, np.ndarray],
         nn.Module
     ]
     """
     best = None
-    best_val_accuracy = -1
+    best_val_mAP = -1
 
     train_losses_per_fold: list[dict[str, list[float]]] = []
-    val_losses_per_fold:   list[dict[str, list[float]]] = []
-    train_accuracies_per_fold: list[list[float]] = []
-    val_accuracies_per_fold:   list[list[float]] = []
+    val_losses_per_fold: list[dict[str, list[float]]] = []
+    train_mAPs_per_fold: list[dict[str, list[float]]] = []
+    val_mAPs_per_fold: list[dict[str, list[float]]] = []
 
     # Save the initial states to reset training every fold.
     initial_model_state = copy.deepcopy(model.state_dict())
@@ -84,7 +97,7 @@ def train_cross_validation(
 
     fold_size = len(full_train_dataset) // k_folds
     for k in range(k_folds):
-        logger.info(f"--==Fold {k+1}/{k_folds}==--")
+        logger.info(f"-----=====##### Fold {k+1}/{k_folds} #####=====-----")
 
         model.load_state_dict(copy.deepcopy(initial_model_state))
         optimiser.load_state_dict(copy.deepcopy(initial_optimiser_state))
@@ -103,33 +116,37 @@ def train_cross_validation(
             Subset(full_train_dataset, val_idx)
         )[0]
 
-        train_losses, train_accuracies, val_losses, val_accuracies, _ = \
+        train_losses, train_mAPs, val_losses, val_mAPs, model = \
             train(
-                train_dataloader=train_dataloader, 
+                train_dataloader=train_dataloader,
                 val_dataloader=val_dataloader,
                 model=model,
                 loss_fn=loss_fn,
                 optimiser=optimiser,
                 scheduler=scheduler,
+                early_stopper=early_stopper,
                 n_epochs=n_epochs,
                 device=device,
                 grid_size=grid_size,
+                iou_thresholds=iou_thresholds,
+                conf_threshold=conf_threshold,
                 logger=logger
             )
         
-
-        fold_best_val_accuracy = max(val_accuracies)
-        if fold_best_val_accuracy > best_val_accuracy:
-            best_val_accuracy = fold_best_val_accuracy
+        fold_best_val_mAP = max(val_mAPs[str(iou_thresholds[0])])
+        if fold_best_val_mAP > best_val_mAP:
+            best_val_mAP = fold_best_val_mAP
             best = copy.deepcopy(model.state_dict())
+
         train_losses_per_fold.append(train_losses)
-        train_accuracies_per_fold.append(train_accuracies)
+        train_mAPs_per_fold.append(train_mAPs)
         val_losses_per_fold.append(val_losses)
-        val_accuracies_per_fold.append(val_accuracies)
+        val_mAPs_per_fold.append(val_mAPs)
     
     # Translate list of dicts of lists to dict-of-arrays, 
     # shape: (k_folds, n_epochs).
     loss_keys = train_losses_per_fold[0].keys()
+    mAP_keys  = train_mAPs_per_fold[0].keys()
     train_losses_stacked = {
         k: np.array([fold[k] for fold in train_losses_per_fold]) 
         for k in loss_keys
@@ -138,13 +155,21 @@ def train_cross_validation(
         k: np.array([fold[k] for fold in val_losses_per_fold]) 
         for k in loss_keys
     }
+    train_mAPs_stacked = {
+        k: np.array([fold[k] for fold in train_mAPs_per_fold])
+        for k in mAP_keys
+    }
+    val_mAPs_stacked = {
+        k: np.array([fold[k] for fold in val_mAPs_per_fold])
+        for k in mAP_keys
+    }
 
     model.load_state_dict(best)
     return \
         train_losses_stacked, \
-        np.array(train_accuracies_per_fold), \
+        train_mAPs_stacked, \
         val_losses_stacked, \
-        np.array(val_accuracies_per_fold), \
+        val_mAPs_stacked, \
         model
 
 def train(
@@ -163,9 +188,10 @@ def train(
     logger: logging.Logger
 )-> tuple[
     dict[str, list[float]],
-    list[float], 
-    dict[str, list[float]], 
-    list[float], nn.Module
+    dict[str, list[float]],
+    dict[str, list[float]],
+    dict[str, list[float]],
+    nn.Module
 ]:
     """
     Train a model for `n_epochs` epochs.
@@ -182,21 +208,31 @@ def train(
     :type optimiser: torch.optim.Optimizer
     :param scheduler: Scheduler to change how the learning rate adapts.
     :type scheduler: torch.optim.lr_scheduler.LRScheduler | None
+    :param early_stopper: Early stopper to halt training when validation
+        loss stops improving.
+    :type early_stopper: EarlyStopper
     :param n_epochs: Number of epochs to train for.
     :type n_epochs: int
     :param device: Device to move data to.
     :type device: str
     :param grid_size: Size of the grid.
-    :param grid_size: int
+    :type grid_size: int
+    :param iou_thresholds: IoU thresholds at which to compute mAP.
+    :type iou_thresholds: list[float]
+    :param conf_threshold: Confidence threshold for filtering 
+        predictions when computing mAP.
+    :type conf_threshold: float
     :param logger: Logger to log to.
     :type logger: logging.Logger
-    :return: Per epoch train losses, accuracies and validation losses 
-        and accuracies. Along with model with the best val accuracy.
+    :return: Per epoch train losses, train mAPs, validation losses, and
+        validation mAPs — each a dict mapping keys to a list of 
+        per-epoch values. Along with the model checkpoint that achieved 
+        the best validation mAP (at the first IoU threshold).
     :rtype: tuple[
         dict[str, list[float]],
-        list[float], 
-        dict[str, list[float]], 
-        list[float], 
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
         nn.Module
     ]
     """
@@ -271,10 +307,10 @@ def train_epoch(
     iou_thresholds: list[float],
     conf_threshold: float,
     logger: logging.Logger
-)-> tuple[dict[str, float], float]:
+)-> tuple[dict[str, float], dict[str, float]]:
     """
     Train a model for 1 epoch.
-
+ 
     :param dataloader: Dataset to train with.
     :type dataloader: DataLoader
     :param model: Model to train.
@@ -288,10 +324,16 @@ def train_epoch(
     :param grid_size: Size of the grid the model used to divide the
         images.
     :type grid_size: int
+    :param iou_thresholds: IoU thresholds at which to compute mAP.
+    :type iou_thresholds: list[float]
+    :param conf_threshold: Confidence threshold for filtering predictions
+        when computing mAP.
+    :type conf_threshold: float
     :param logger: Logger to log to.
     :type logger: logging.Logger
-    :return: Average training losses and accuracy over the epoch.
-    :rtype: tuple[dict[str, float], float]
+    :return: Average training losses and mAPs over the epoch, each as a
+        dict mapping loss/threshold keys to scalar values.
+    :rtype: tuple[dict[str, float], dict[str, float]]
     """
     train_losses = {
         "total": 0, 
@@ -359,10 +401,10 @@ def val_epoch(
     iou_thresholds: list[float],
     conf_threshold: float,
     logger: logging.Logger
-)-> tuple[dict[str, float], float]:
+)-> tuple[dict[str, float], dict[str, float]]:
     """
-    Validate the accuracy and loss for a given dataset and model.
-
+    Validate the mAP and loss for a given dataset and model.
+ 
     :param dataloader: Dataset to validate with.
     :type dataloader: DataLoader
     :param model: Model to validate.
@@ -371,10 +413,19 @@ def val_epoch(
     :type loss_fn: nn.Module
     :param device: Device to move data to.
     :type device: str
+    :param grid_size: Size of the grid the model used to divide the
+        images.
+    :type grid_size: int
+    :param iou_thresholds: IoU thresholds at which to compute mAP.
+    :type iou_thresholds: list[float]
+    :param conf_threshold: Confidence threshold for filtering predictions
+        when computing mAP.
+    :type conf_threshold: float
     :param logger: Logger to log to.
     :type logger: logging.Logger
-    :return: Average validation losses and accuracy over the epoch.
-    :rtype: tuple[dict[str, float], float]
+    :return: Average validation losses and mAPs over the epoch, each as a
+        dict mapping loss/threshold keys to scalar values.
+    :rtype: tuple[dict[str, float], dict[str, float]]
     """
     model.eval()
     val_losses = {
@@ -441,10 +492,10 @@ def test_classes(
     plotting_conf_threshold: float,
     visualise_first_batch: bool,
     logger: logging.Logger
-) -> tuple[float, float, np.ndarray, np.ndarray]:
+) -> tuple[dict[str, float], dict[str, float]]:
     """
-    Test the accuracy and loss for a given dataset and model.
-
+    Test the mAP and loss for a given dataset and model.
+ 
     :param dataloader: Dataset to test with.
     :type dataloader: DataLoader
     :param model: Model to test.
@@ -453,17 +504,25 @@ def test_classes(
     :type loss_fn: nn.Module
     :param device: Device to move data to.
     :type device: str
-    :param plotting_conf_threshold: Confidence for plotting the first
-        batch, only used if `visualise_first_batch`.
+    :param grid_size: Size of the grid the model used to divide the
+        images.
+    :type grid_size: int
+    :param iou_thresholds: IoU thresholds at which to compute mAP.
+    :type iou_thresholds: list[float]
+    :param conf_threshold: Confidence threshold for filtering predictions
+        when computing mAP.
+    :type conf_threshold: float
+    :param plotting_conf_threshold: Confidence threshold for plotting the
+        first batch, only used if `visualise_first_batch` is True.
     :type plotting_conf_threshold: float
     :param visualise_first_batch: True if you want to visualise the
         first batch of predictions along with the ground truth.
     :type visualise_first_batch: bool
     :param logger: Logger to log to.
     :type logger: logging.Logger
-    :return: Average validation loss, accuracy, true labels, and 
-        predicted labels.
-    :rtype: tuple[float, float, np.ndarray, np.ndarray]
+    :return: Average test losses and mAPs over the dataset, each as a
+        dict mapping loss/threshold keys to scalar values.
+    :rtype: tuple[dict[str, float], dict[str, float]]
     """
     model.eval()
     test_losses = {

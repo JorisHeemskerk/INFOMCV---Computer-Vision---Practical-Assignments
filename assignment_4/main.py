@@ -10,7 +10,7 @@ import yaml
 from jsonschema import validate, ValidationError
 from sklearn.model_selection import train_test_split
 from torchvision import transforms
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, ConcatDataset
 from typing import Any
 
 import handle_output
@@ -20,7 +20,7 @@ from create_logger import create_logger
 from config.config_validation_template import CONFIG_TEMPLATE
 from data import to_dataloaders
 from early_stopper import EarlyStopper
-from train import train, test_classes
+from train import train, test_classes, train_cross_validation
 from visualise import visualise_batch, visualise_training
 from yolov1_base import YOLOv1Base
 from yolov1_loss import YOLOv1Loss
@@ -124,24 +124,56 @@ def _process_job(
     LOSS_FN = YOLOv1Loss(job["lambda_coord"], job["lambda_noobj"])
     EARLY_STOPPER = EarlyStopper(15, 0.0)
 
-    train_losses, train_mAPs, val_losses, val_mAPs, model = \
-        train(
-            train_dataloader=train_dataloader, 
-            val_dataloader=val_dataloader,
-            model=model,
-            loss_fn=LOSS_FN,
-            optimiser=OPTIMISER,
-            scheduler=SCHEDULER,
-            early_stopper=EARLY_STOPPER,
-            n_epochs=job["n_epochs"],
-            device=DEVICE,
-            grid_size=CONFIG["general"]["grid_size"],
-            iou_thresholds=job["iou_thresholds"],
-            conf_threshold=job["conf_threshold"],
-            logger=logger
+    # Arguments used by both normal training and cross_validation
+    arguments = {
+        "model" : model,
+        "loss_fn" : LOSS_FN,
+        "optimiser": OPTIMISER,
+        "scheduler" : SCHEDULER,
+        "early_stopper" : EARLY_STOPPER,
+        "n_epochs" : job["n_epochs"],
+        "device" : DEVICE,
+        "grid_size" : CONFIG["general"]["grid_size"],
+        "iou_thresholds" : job["iou_thresholds"],
+        "conf_threshold" : job["conf_threshold"],
+        "logger" : logger
+    }
+    # Only perform cross validation on k >= 2.
+    if job["k_folds"] <= 1:
+        train_losses, train_mAPs, val_losses, val_mAPs, model = train(
+        train_dataloader=train_dataloader, 
+        val_dataloader=val_dataloader,
+            **arguments
         )
-    train_losses_std, train_mAPs_std = None, None
-    val_losses_std, val_mAPs_std = None, None
+        train_losses_std, train_mAPs_std = None, None
+        val_losses_std, val_mAPs_std = None, None
+    else:
+        all_train_dataset = ConcatDataset([train_dataset, val_dataset])
+
+        train_losses, train_mAPs, val_losses, val_mAPs, model = \
+            train_cross_validation(
+                full_train_dataset=all_train_dataset,
+                k_folds=job["k_folds"],
+                dataset_to_dataloader_function=lambda dataset: to_dataloaders(
+                    [dataset],
+                    batch_sizes=[job["batch_size"]],
+                    shuffles=[False],
+                    logger=logger
+                ),
+                **arguments, 
+            )
+        loss_keys = train_losses.keys()
+        mAP_keys = train_mAPs.keys()
+        train_losses = {k: np.mean(train_losses[k], axis=0) for k in loss_keys}
+        train_losses_std = \
+            {k: np.std(train_losses[k], axis=0) for k in loss_keys}
+        val_losses = {k: np.mean(val_losses[k], axis=0) for k in loss_keys}
+        val_losses_std = {k: np.std(val_losses[k], axis=0) for k in loss_keys}
+        train_mAPs = {k: np.mean(train_mAPs[k], axis=0) for k in mAP_keys}
+        train_mAPs_std = {k: np.std(train_mAPs[k], axis=0) for k in mAP_keys}
+        val_mAPs = {k: np.mean(val_mAPs[k], axis=0) for k in mAP_keys}
+        val_mAPs_std = {k: np.std(val_mAPs[k], axis=0) for k in mAP_keys}
+    
 
     model.save(handle_output.OUTPUT_DIR)
     ####################################################################
@@ -149,12 +181,12 @@ def _process_job(
     ####################################################################
     # TODO: what if the first threshold is not the best for this?
     mAP_train_string = ", ".join(
-        f"mAP@{threshold}: {np.max(train_mAPs[str(threshold)])*100:<2f}"
+        f"mAP@{threshold}: {np.max(train_mAPs[str(threshold)])*100:<2f}%"
         for threshold in job["iou_thresholds"]
     )
     train_best_epoch = np.argmax(train_mAPs[str(job["iou_thresholds"][0])]) + 1
     mAP_val_string = ", ".join(
-        f"mAP@{threshold}: {np.max(val_mAPs[str(threshold)])*100:<2f}"
+        f"mAP@{threshold}: {np.max(val_mAPs[str(threshold)])*100:<2f}%"
         for threshold in job["iou_thresholds"]
     )
     val_best_epoch = np.argmax(val_mAPs[str(job["iou_thresholds"][0])]) + 1

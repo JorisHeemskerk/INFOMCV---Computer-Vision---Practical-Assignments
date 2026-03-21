@@ -22,6 +22,7 @@ modify this code, at the express notion that a disclaimer was put in.
             train_val_test_split: _
             batch_size : _
             n_epochs: _
+            k_folds: _
             learning_rate: _
             l1_coefficient: _
             lambda_coord: _
@@ -81,6 +82,10 @@ CONFIG_TEMPLATE = {
                             'type': 'number', 
                             'minimum': 1
                         },
+                        'k_folds': {
+                            'type': 'number', 
+                            'minimum': 0,
+                        },
                         'learning_rate': {
                             'type': 'number'
                         },
@@ -106,6 +111,7 @@ CONFIG_TEMPLATE = {
                         'train_val_test_split',
                         'batch_size',
                         'n_epochs',
+                        'k_folds',
                         'learning_rate',
                         'lambda_coord',
                         'lambda_noobj',
