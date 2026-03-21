@@ -17,7 +17,7 @@ jobs:
     job0:
         train_val_test_split : [.8, .1, .1]
         batch_size : 8
-        n_epochs: 2
+        n_epochs: 100
         k_folds: 1
         learning_rate:  .00001 # 1e-5
         lambda_coord: 5

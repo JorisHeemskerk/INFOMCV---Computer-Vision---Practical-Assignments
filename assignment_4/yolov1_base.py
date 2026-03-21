@@ -43,7 +43,7 @@ class YOLOv1Base(nn.Module):
 
             nn.Flatten(),
 
-            nn.Dropout(.2), # NOTE: how much dropout do we need?
+            nn.Dropout(.5), # NOTE: how much dropout do we need?
 
             # 112 -> 56 -> 28 -> 14 -> 7 | 7 * 7 * 32 = 1568
             nn.Linear(in_features=1568, out_features=512), 

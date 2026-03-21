@@ -164,15 +164,15 @@ def _process_job(
             )
         loss_keys = train_losses.keys()
         mAP_keys = train_mAPs.keys()
-        train_losses = {k: np.mean(train_losses[k], axis=0) for k in loss_keys}
         train_losses_std = \
             {k: np.std(train_losses[k], axis=0) for k in loss_keys}
-        val_losses = {k: np.mean(val_losses[k], axis=0) for k in loss_keys}
+        train_losses = {k: np.mean(train_losses[k], axis=0) for k in loss_keys}
         val_losses_std = {k: np.std(val_losses[k], axis=0) for k in loss_keys}
-        train_mAPs = {k: np.mean(train_mAPs[k], axis=0) for k in mAP_keys}
+        val_losses = {k: np.mean(val_losses[k], axis=0) for k in loss_keys}
         train_mAPs_std = {k: np.std(train_mAPs[k], axis=0) for k in mAP_keys}
-        val_mAPs = {k: np.mean(val_mAPs[k], axis=0) for k in mAP_keys}
+        train_mAPs = {k: np.mean(train_mAPs[k], axis=0) for k in mAP_keys}
         val_mAPs_std = {k: np.std(val_mAPs[k], axis=0) for k in mAP_keys}
+        val_mAPs = {k: np.mean(val_mAPs[k], axis=0) for k in mAP_keys}
     
 
     model.save(handle_output.OUTPUT_DIR)
