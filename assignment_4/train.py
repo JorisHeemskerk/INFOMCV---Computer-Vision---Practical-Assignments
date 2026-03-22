@@ -15,6 +15,27 @@ from mean_average_precision import compute_map
 from visualise import visualise_batch
 
 
+def _pad_to_longest(arrays: list[list[float]]) -> np.ndarray:
+    """
+    Pad fold arrays to equal length with NaN so that folds stopped
+    early do not corrupt the mean/std calculation.
+
+    :param arrays: arrays of different sizes
+    :type arrays: list[list[float]]
+    :returns: padded arrays
+    :rtype: np.ndarray 
+    """
+    max_len = max(len(a) for a in arrays)
+    padded = [
+        np.pad(
+            np.array(a, dtype=float), 
+            (0, max_len - len(a)), 
+            constant_values=np.nan
+        )
+        for a in arrays
+    ]
+    return np.array(padded)
+
 def train_cross_validation(
     full_train_dataset: Dataset,
     k_folds: int,
@@ -103,6 +124,8 @@ def train_cross_validation(
         optimiser.load_state_dict(copy.deepcopy(initial_optimiser_state))
         if scheduler is not None:
             scheduler.load_state_dict(copy.deepcopy(initial_scheduler_state))
+        # Reset early stopper.
+        early_stopper.reset()
 
         # Generate all the indexes of the items from each fold.
         val_idx = list(range(k * fold_size, k * fold_size + fold_size))
@@ -148,19 +171,19 @@ def train_cross_validation(
     loss_keys = train_losses_per_fold[0].keys()
     mAP_keys  = train_mAPs_per_fold[0].keys()
     train_losses_stacked = {
-        k: np.array([fold[k] for fold in train_losses_per_fold]) 
+        k: _pad_to_longest([fold[k] for fold in train_losses_per_fold]) 
         for k in loss_keys
     }
     val_losses_stacked = {
-        k: np.array([fold[k] for fold in val_losses_per_fold]) 
+        k: _pad_to_longest([fold[k] for fold in val_losses_per_fold]) 
         for k in loss_keys
     }
     train_mAPs_stacked = {
-        k: np.array([fold[k] for fold in train_mAPs_per_fold])
+        k: _pad_to_longest([fold[k] for fold in train_mAPs_per_fold])
         for k in mAP_keys
     }
     val_mAPs_stacked = {
-        k: np.array([fold[k] for fold in val_mAPs_per_fold])
+        k: _pad_to_longest([fold[k] for fold in val_mAPs_per_fold])
         for k in mAP_keys
     }
 

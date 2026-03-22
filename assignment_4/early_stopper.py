@@ -35,3 +35,10 @@ class EarlyStopper:
         else:
             self.counter += 1
         return self.counter >= self.patience
+
+    def reset(self)-> None:
+        """
+        Reset to base values.
+        """
+        self.best_loss = float("inf")
+        self.counter = 0

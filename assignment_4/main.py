@@ -205,36 +205,11 @@ def _process_job(
                 **arguments, 
             )
         # Combine all folds into 1, remembering the data distributions.
-        def _pad_fold_arrays(arrays: list[np.ndarray]) -> np.ndarray:
-            """
-            Pad fold arrays to equal length with NaN so that folds stopped
-            early do not corrupt the mean/std calculation.
-
-            :param arrays: arrays of different sizes
-            :type arrays: list[np.ndarray]
-            :returns: padded arrays
-            :rtype: np.ndarray 
-            """
-            max_len = max(len(a) for a in arrays)
-            padded = [
-                np.pad(
-                    a.astype(float), 
-                    (0, max_len - len(a)), 
-                    constant_values=np.nan
-                )
-                for a in arrays
-            ]
-            return np.array(padded)
-
         loss_keys = train_losses.keys()
         mAP_keys = train_mAPs.keys()
 
-        mean_func = lambda x, y: {
-            k: np.nanmean(_pad_fold_arrays(x[k]), axis=0) for k in y
-        }
-        std_func = lambda x, y: {
-            k: np.nanstd(_pad_fold_arrays(x[k]), axis=0) for k in y
-        }
+        mean_func = lambda x, y: {k: np.nanmean(x[k], axis=0) for k in y}
+        std_func = lambda x, y: {k: np.nanstd(x[k], axis=0) for k in y}
         
         train_losses_std = std_func(train_losses, loss_keys)
         train_losses = mean_func(train_losses, loss_keys)
