@@ -481,7 +481,7 @@ def val_epoch(
     )
     return avg_losses, val_mAPs
 
-def test_classes(
+def predict_epoch(
     dataloader: DataLoader, 
     model: nn.Module, 
     loss_fn: nn.Module,
@@ -494,13 +494,13 @@ def test_classes(
     logger: logging.Logger
 ) -> tuple[dict[str, float], dict[str, float]]:
     """
-    Test the mAP and loss for a given dataset and model.
+    Compute the mAP and loss for a given dataset and model.
  
-    :param dataloader: Dataset to test with.
+    :param dataloader: Dataset to predict with.
     :type dataloader: DataLoader
-    :param model: Model to test.
+    :param model: Model to use for predictions.
     :type model: nn.Module
-    :param loss_fn: Loss function to test with.
+    :param loss_fn: Loss function to predict with.
     :type loss_fn: nn.Module
     :param device: Device to move data to.
     :type device: str
@@ -520,8 +520,8 @@ def test_classes(
     :type visualise_first_batch: bool
     :param logger: Logger to log to.
     :type logger: logging.Logger
-    :return: Average test losses and mAPs over the dataset, each as a
-        dict mapping loss/threshold keys to scalar values.
+    :return: Average losses and mAPs over the dataset, each as a dict 
+        mapping loss/threshold keys to scalar values.
     :rtype: tuple[dict[str, float], dict[str, float]]
     """
     model.eval()

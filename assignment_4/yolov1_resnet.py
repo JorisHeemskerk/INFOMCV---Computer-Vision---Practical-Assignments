@@ -36,7 +36,7 @@ class YOLOv1ResNet(YOLOv1Base):
         self.backbone = nn.Sequential(*list(resnet.children())[:-2])
 
         if freeze_backbone:
-            self.logger.info("Freezing ResNet-18 backbone.")
+            self.logger.debug("Freezing ResNet-18 backbone.")
             for param in self.backbone.parameters():
                 param.requires_grad = False
 
@@ -47,6 +47,7 @@ class YOLOv1ResNet(YOLOv1Base):
             # 7 * 7 * 512 = 25088
             nn.Linear(25_088, 512),
             nn.ReLU(),
+
             # 7 * 7 grid * (1 object + 4 bbox + 2 classes) = 343
             nn.Linear(512, 343),
             nn.Sigmoid(),

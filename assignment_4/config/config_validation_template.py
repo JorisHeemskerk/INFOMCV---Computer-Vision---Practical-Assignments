@@ -16,6 +16,7 @@ modify this code, at the express notion that a disclaimer was put in.
         data_images_path : _
         data_annotations_path : _
         grid_size: _
+        num_data_workers: _
     jobs:
         job0:
             model: _
@@ -48,13 +49,18 @@ CONFIG_TEMPLATE = {
                 },
                 'grid_size': {
                     'type': 'number',
-                    'minimum': 0
+                    'minimum': 1
+                },
+                'num_data_workers': {
+                    'type': 'number',
+                    'minimum': 1
                 },
             },
             'required': [
                 'data_images_path', 
                 'data_annotations_path',
                 'grid_size',
+                'num_data_workers',
             ],
             'additionalProperties' : False
         },

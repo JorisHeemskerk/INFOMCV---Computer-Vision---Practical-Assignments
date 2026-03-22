@@ -104,9 +104,9 @@ def decode_predictions(
 
     # x, y centre data is still relative to the respective grid cell,
     # which we have to 'normalise' using offsets.
-    cell_indexes = torch.arange(7)
-    column_offsets = cell_indexes.view(1, 1, 7).to(y.device)
-    row_offsets = cell_indexes.view(1, 7, 1).to(y.device)
+    cell_indexes = torch.arange(7, device=output.device)
+    column_offsets = cell_indexes.view(1, 1, 7)
+    row_offsets = cell_indexes.view(1, 7, 1)
 
     corrected_x = (column_offsets + x) / 7
     corrected_y = (row_offsets + y) / 7

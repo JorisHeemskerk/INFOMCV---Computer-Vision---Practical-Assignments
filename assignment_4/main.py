@@ -20,7 +20,7 @@ from create_logger import create_logger
 from config.config_validation_template import CONFIG_TEMPLATE
 from data import to_dataloaders
 from early_stopper import EarlyStopper
-from train import train, test_classes, train_cross_validation
+from train import train, predict_epoch, train_cross_validation
 from visualise import visualise_batch, visualise_training
 from yolov1_base import YOLOv1Base
 from yolov1_resnet import YOLOv1ResNet
@@ -42,7 +42,7 @@ def _process_job(
     :param logger: Logger to log to.
     :type logger: logging.Logger
     """
-    # Change output dir to specific job folder.
+    ############ Change output dir to specific job folder. #############
     handle_output.OUTPUT_DIR = f"{handle_output.OUTPUT_DIR}job_{job_id}/" if \
         job_id == 0 else "/".join(
             handle_output.OUTPUT_DIR.split("/")[:-2]
@@ -79,7 +79,7 @@ def _process_job(
     labels = dataset._labels
     indices = list(range(len(dataset)))
     
-    # Split in a stratisfied manner.
+    ################## Split in a stratisfied manner. ##################
     train_idx, val_test_idx, _, val_test_labels = train_test_split(
         indices, 
         labels,
@@ -103,15 +103,19 @@ def _process_job(
         f"{len(train_dataset)= }, {len(val_dataset)= }, {len(test_dataset)= }"
     )
 
+    ########## Convert DataSet objects to DataLoader objects. ##########
     train_dataloader, val_dataloader, test_dataloader = to_dataloaders(
         [train_dataset, val_dataset, test_dataset], 
         batch_sizes=[job["batch_size"]] * 3, 
         shuffles=[True, True, False],
         logger=logger,
+        num_workers=CONFIG["general"]["num_data_workers"],
+        pin_memory=True,
+        persistent_workers=True
         # collate_fn=lambda x: tuple(zip(*x)) # TODO: why is this needed????????????
     )
 
-    # Save quick example of the training dataloader to file.
+    ###### Save quick example of the training dataloader to file. ######
     logger.debug("Visualising the first batch of the train dataloader.")
     visualise_batch(
         train_dataloader, 
@@ -120,14 +124,19 @@ def _process_job(
     )
 
     ####################################################################
-    #                          Load the model.                         #
+    #                     Load the (correct) model.                    #
     ####################################################################
     logger.debug(f"Initialising the model ({job['model']})")
-    models = {"yolov1base": YOLOv1Base, "yolov1resnet": YOLOv1ResNet}
+    models = {
+        "yolov1base": (YOLOv1Base, {"logger": logger}), 
+        "yolov1resnet": (YOLOv1ResNet, {
+            "logger": logger,
+            "freeze_backbone" : False # TODO: should we freeze these weights?
+        })}
     model = None
-    for name, cls in models.items():
+    for name, (cls, kwargs) in models.items():
         if job['model'].lower() in name:
-            model = cls(logger)
+            model = cls(**kwargs)
             break
     assert model is not None, "Provided model in config does not exist."
     logger.debug(f"Model:\n{model}")
@@ -167,6 +176,7 @@ def _process_job(
         "logger" : logger
     }
     # Only perform cross validation on k >= 2.
+    # Normal training, no folds.
     if job["k_folds"] <= 1:
         train_losses, train_mAPs, val_losses, val_mAPs, model = train(
         train_dataloader=train_dataloader, 
@@ -175,6 +185,7 @@ def _process_job(
         )
         train_losses_std, train_mAPs_std = None, None
         val_losses_std, val_mAPs_std = None, None
+    # Training with k-folds
     else:
         all_train_dataset = ConcatDataset([train_dataset, val_dataset])
 
@@ -186,38 +197,76 @@ def _process_job(
                     [dataset],
                     batch_sizes=[job["batch_size"]],
                     shuffles=[False],
-                    logger=logger
+                    logger=logger,
+                    num_workers=CONFIG["general"]["num_data_workers"],
+                    pin_memory=True,
+                    persistent_workers=True
                 ),
                 **arguments, 
             )
+        # Combine all folds into 1, remembering the data distributions.
+        def _pad_fold_arrays(arrays: list[np.ndarray]) -> np.ndarray:
+            """
+            Pad fold arrays to equal length with NaN so that folds stopped
+            early do not corrupt the mean/std calculation.
+
+            :param arrays: arrays of different sizes
+            :type arrays: list[np.ndarray]
+            :returns: padded arrays
+            :rtype: np.ndarray 
+            """
+            max_len = max(len(a) for a in arrays)
+            padded = [
+                np.pad(
+                    a.astype(float), 
+                    (0, max_len - len(a)), 
+                    constant_values=np.nan
+                )
+                for a in arrays
+            ]
+            return np.array(padded)
+
         loss_keys = train_losses.keys()
         mAP_keys = train_mAPs.keys()
-        train_losses_std = \
-            {k: np.std(train_losses[k], axis=0) for k in loss_keys}
-        train_losses = {k: np.mean(train_losses[k], axis=0) for k in loss_keys}
-        val_losses_std = {k: np.std(val_losses[k], axis=0) for k in loss_keys}
-        val_losses = {k: np.mean(val_losses[k], axis=0) for k in loss_keys}
-        train_mAPs_std = {k: np.std(train_mAPs[k], axis=0) for k in mAP_keys}
-        train_mAPs = {k: np.mean(train_mAPs[k], axis=0) for k in mAP_keys}
-        val_mAPs_std = {k: np.std(val_mAPs[k], axis=0) for k in mAP_keys}
-        val_mAPs = {k: np.mean(val_mAPs[k], axis=0) for k in mAP_keys}
-    
 
+        mean_func = lambda x, y: {
+            k: np.nanmean(_pad_fold_arrays(x[k]), axis=0) for k in y
+        }
+        std_func = lambda x, y: {
+            k: np.nanstd(_pad_fold_arrays(x[k]), axis=0) for k in y
+        }
+        
+        train_losses_std = std_func(train_losses, loss_keys)
+        train_losses = mean_func(train_losses, loss_keys)
+        
+        val_losses_std = std_func(val_losses, loss_keys)
+        val_losses = mean_func(val_losses, loss_keys)
+        
+        train_mAPs_std = std_func(train_mAPs, mAP_keys)
+        train_mAPs = mean_func(train_mAPs, mAP_keys)
+
+        val_mAPs_std = std_func(val_mAPs, mAP_keys)
+        val_mAPs = mean_func(val_mAPs, mAP_keys)
+    
+    # Save the best performing model (based on the validation set).
     model.save(handle_output.OUTPUT_DIR)
     ####################################################################
     #                         Show the results.                        #
     ####################################################################
+    ########### Log the best training and validation scores. ###########
     # TODO: what if the first threshold is not the best for this?
     mAP_train_string = ", ".join(
         f"mAP@{threshold}: {np.max(train_mAPs[str(threshold)])*100:<2f}%"
         for threshold in job["iou_thresholds"]
     )
-    train_best_epoch = np.argmax(train_mAPs[str(job["iou_thresholds"][0])]) + 1
+    train_best_epoch = np.nanargmax(
+        train_mAPs[str(job["iou_thresholds"][0])]
+    ) + 1
     mAP_val_string = ", ".join(
         f"mAP@{threshold}: {np.max(val_mAPs[str(threshold)])*100:<2f}%"
         for threshold in job["iou_thresholds"]
     )
-    val_best_epoch = np.argmax(val_mAPs[str(job["iou_thresholds"][0])]) + 1
+    val_best_epoch = np.nanargmax(val_mAPs[str(job["iou_thresholds"][0])]) + 1
     logger.critical(
         f"Best training scores: {mAP_train_string} | "
         f"achieved during epoch {train_best_epoch}."
@@ -227,6 +276,7 @@ def _process_job(
         f"achieved during epoch {val_best_epoch}."
     )
 
+    ############### Produce all the loss and mAP figures. ##############
     visualise_training(
         train_losses, 
         train_mAPs, 
@@ -239,8 +289,8 @@ def _process_job(
         val_mAPs_std
     )
 
-    # run to visualise predictions on the first validation batch
-    test_classes(
+    ###### Predict on the validation set, then visualise batch 1. ######
+    predict_epoch(
         dataloader=val_dataloader,
         model=model,
         loss_fn=LOSS_FN,
@@ -258,7 +308,7 @@ def _process_job(
     
     # TODO: comment in once final hyperparameters are selected
 
-    # test_loss, test_mAP = test_classes(
+    # test_loss, test_mAP = predict_epoch(
     #     dataloader=test_dataloader,
     #     model=model,
     #     loss_fn=LOSS_FN,
