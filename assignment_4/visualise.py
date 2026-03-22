@@ -15,7 +15,21 @@ COLOUR_CAT = (255, 127, 14)
 COLOUR_DOG = (31, 119, 180)
 COLOUR_CAT_NORMALISED = tuple(np.array(COLOUR_CAT) / 255)
 COLOUR_DOG_NORMALISED = tuple(np.array(COLOUR_DOG) / 255)
+IMAGENET_MEAN = torch.tensor([0.485, 0.456, 0.406])
+IMAGENET_STD  = torch.tensor([0.229, 0.224, 0.225])
 
+def denormalise(image: torch.Tensor) -> torch.Tensor:
+    """
+    Reverse ImageNet normalisation on a single image tensor.
+
+    :param image: Float tensor of shape (C, H, W), normalised.
+    :type image: torch.Tensor
+    :return: Float tensor of shape (C, H, W), values clipped to [0, 1].
+    :rtype: torch.Tensor
+    """
+    mean = IMAGENET_MEAN.to(image.device)
+    std  = IMAGENET_STD.to(image.device)
+    return (image * std[:, None, None] + mean[:, None, None]).clamp(0, 1)
 
 def draw_boxes(
     image: cv2.typing.MatLike, 
@@ -53,6 +67,7 @@ def draw_boxes(
     :rtype: cv2.typing.MatLike
     """
     image = image.copy()
+
     img_h, img_w = image.shape[:2]
 
     corrected_x, corrected_y, w, h, object_confidence, classes = \
@@ -242,6 +257,7 @@ def visualise_batch(
 
     for i, img in enumerate(X):
         pic = copy.deepcopy(img).cpu()
+        pic = denormalise(pic)
         pic = pic.permute(1, 2, 0).numpy()
         pic = draw_boxes(
             pic,
@@ -252,6 +268,7 @@ def visualise_batch(
         axes[0,i].imshow(pic)
 
         pic = copy.deepcopy(img).cpu()
+        pic = denormalise(pic)
         pic = pic.permute(1, 2, 0).numpy()
         pic = draw_boxes(
             pic,
@@ -316,6 +333,7 @@ def visualise_batch(
     """
     for i, img in enumerate(images):
         pic = copy.deepcopy(img).cpu()
+        pic = denormalise(pic)
         pic = pic.permute(1, 2, 0).numpy()
         pic = draw_boxes(
             pic,

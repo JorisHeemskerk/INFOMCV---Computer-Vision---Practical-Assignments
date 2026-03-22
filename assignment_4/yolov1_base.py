@@ -16,7 +16,7 @@ class YOLOv1Base(nn.Module):
         """
         super().__init__()
         self.logger = logger
-        self.layers = nn.Sequential(
+        self.backbone = nn.Sequential(
             nn.Conv2d(3, 16, 3, padding=1),
             nn.BatchNorm2d(16),
             nn.ReLU(),
@@ -40,9 +40,9 @@ class YOLOv1Base(nn.Module):
             nn.Conv2d(64, 32, 3, padding=1),
             nn.BatchNorm2d(32),
             nn.ReLU(),
-
+        )
+        self.head = nn.Sequential(
             nn.Flatten(),
-
             nn.Dropout(.5), # NOTE: how much dropout do we need?
 
             # 112 -> 56 -> 28 -> 14 -> 7 | 7 * 7 * 32 = 1568
@@ -68,12 +68,13 @@ class YOLOv1Base(nn.Module):
         """
         Perform a forward pass on the network.
 
-        :param x: Input tensor of shape (batch_size, 3, 112, 112).
+        :param x: Input tensor of shape 
+            (batch_size, 3, img_size, img_size).
         :type x: torch.Tensor
         :return: Output tensor of shape (batch_size, 343)
         :rtype: torch.Tensor
         """
-        return self.layers(x)
+        return self.head(self.backbone(x))
 
     def save(self, dir: str)-> None:
         """
@@ -83,5 +84,5 @@ class YOLOv1Base(nn.Module):
         :type dir: str
         """
         filename = f"{dir}/best_{self.__class__.__name__}.pth"
-        self.logger.info(f"Saving model...")
+        self.logger.info(f"Saving model to {filename}...")
         torch.save(self, filename)

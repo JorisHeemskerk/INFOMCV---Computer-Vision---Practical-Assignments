@@ -23,13 +23,13 @@ from early_stopper import EarlyStopper
 from train import train, test_classes, train_cross_validation
 from visualise import visualise_batch, visualise_training
 from yolov1_base import YOLOv1Base
+from yolov1_resnet import YOLOv1ResNet
 from yolov1_loss import YOLOv1Loss
 
 
 def _process_job(
     job: dict[str, Any], 
     job_id: int, 
-    dataset: Dataset, 
     logger: logging.Logger
 )-> None:
     """
@@ -39,8 +39,6 @@ def _process_job(
     :type job: dict[str, Any]
     :param job_id: ID of the current job (for logging).
     :type job_id: int
-    :param dataset: Complete dataset object
-    :type dataset: Dataset
     :param logger: Logger to log to.
     :type logger: logging.Logger
     """
@@ -50,6 +48,30 @@ def _process_job(
             handle_output.OUTPUT_DIR.split("/")[:-2]
         ) + f"/job_{job_id}/"
     os.makedirs(handle_output.OUTPUT_DIR)
+
+    ####################################################################
+    #                          Load the data.                          #
+    ####################################################################
+    dataset = CatDogDataset(
+        img_dir=CONFIG["general"]["data_images_path"], 
+        ann_dir=CONFIG["general"]["data_annotations_path"], 
+        input_img_size=job["input_image_size"],
+        grid_size=CONFIG["general"]["grid_size"],
+        logger=logger,
+        transform=transforms.Compose([
+            transforms.Resize((
+                job["input_image_size"],
+                job["input_image_size"]
+            )),
+            transforms.ToTensor(),
+            # These numbers are from ImageNet, for normalisation.
+            transforms.Normalize(
+                mean=[0.485, 0.456, 0.406],   
+                std=[0.229, 0.224, 0.225]
+            )
+        ]),
+    )
+
     ####################################################################
     #                      Create the DataLoaders.                     #
     ####################################################################
@@ -100,8 +122,14 @@ def _process_job(
     ####################################################################
     #                          Load the model.                         #
     ####################################################################
-    logger.debug("Initialising the model.")
-    model = YOLOv1Base(logger)
+    logger.debug(f"Initialising the model ({job['model']})")
+    models = {"yolov1base": YOLOv1Base, "yolov1resnet": YOLOv1ResNet}
+    model = None
+    for name, cls in models.items():
+        if job['model'].lower() in name:
+            model = cls(logger)
+            break
+    assert model is not None, "Provided model in config does not exist."
     logger.debug(f"Model:\n{model}")
     logger.debug("Total number of parameters: "
         f"{sum(p.numel() for p in model.parameters()):,}"
@@ -122,7 +150,7 @@ def _process_job(
         OPTIMISER, mode='min', patience=10, factor=0.5
     )
     LOSS_FN = YOLOv1Loss(job["lambda_coord"], job["lambda_noobj"])
-    EARLY_STOPPER = EarlyStopper(15, 0.0)
+    EARLY_STOPPER = EarlyStopper(15, 0.01)
 
     # Arguments used by both normal training and cross_validation
     arguments = {
@@ -253,24 +281,6 @@ def _process_job(
 
 def main()-> None:
     ####################################################################
-    #                          Load the data.                          #
-    ####################################################################
-    dataset = CatDogDataset(
-        img_dir=CONFIG["general"]["data_images_path"], 
-        ann_dir=CONFIG["general"]["data_annotations_path"], 
-        input_img_size=CONFIG["general"]["input_image_size"],
-        grid_size=CONFIG["general"]["grid_size"],
-        logger=logger,
-        transform=transforms.Compose([
-            transforms.Resize((
-                CONFIG["general"]["input_image_size"],
-                CONFIG["general"]["input_image_size"]
-            )),
-            transforms.ToTensor()
-        ]),
-    )
-
-    ####################################################################
     #                         Execute all jobs.                        #
     ####################################################################
     for i, job in enumerate(CONFIG['jobs'].values()):
@@ -292,7 +302,6 @@ def main()-> None:
             _process_job(
                 job=job,
                 job_id=i, 
-                dataset=dataset,
                 logger=logger
             )
         except KeyboardInterrupt as e:

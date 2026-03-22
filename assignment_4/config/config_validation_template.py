@@ -15,10 +15,11 @@ modify this code, at the express notion that a disclaimer was put in.
     general:
         data_images_path : _
         data_annotations_path : _
-        input_image_size: _
         grid_size: _
     jobs:
         job0:
+            model: _
+            input_image_size: _
             train_val_test_split: _
             batch_size : _
             n_epochs: _
@@ -45,10 +46,6 @@ CONFIG_TEMPLATE = {
                 'data_annotations_path': {
                     'type': 'string', 
                 },
-                'input_image_size': {
-                    'type': 'number',
-                    'minimum': 0
-                },
                 'grid_size': {
                     'type': 'number',
                     'minimum': 0
@@ -57,7 +54,6 @@ CONFIG_TEMPLATE = {
             'required': [
                 'data_images_path', 
                 'data_annotations_path',
-                'input_image_size',
                 'grid_size',
             ],
             'additionalProperties' : False
@@ -68,6 +64,13 @@ CONFIG_TEMPLATE = {
                 '^job\\d+$': {
                     'type': 'object',
                     'properties': {
+                        'model': {
+                            'type': 'string', 
+                        },
+                        'input_image_size': {
+                            'type': 'number', 
+                            'minimum': 1
+                        },
                         'train_val_test_split': {
                             'type': 'array',
                             'items': {'type': 'number'},
