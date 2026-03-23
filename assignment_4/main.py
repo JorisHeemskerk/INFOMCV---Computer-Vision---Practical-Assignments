@@ -148,13 +148,13 @@ def _process_job(
                 handle_output.OUTPUT_DIR.split("/")[:-2]
             ) + f"/job_{job_id - 1}/"
             logger.debug(f"Continue from previous job: {previous_job_dir}")
-            model.load(previous_job_dir, logger)
+            model = model.load(previous_job_dir, logger)
         else:
             logger.debug(
                 "starting from provided checkpoint model: "
                 f"{job["start_from_checkpoint_path"]}"
             )
-            model.load(job["start_from_checkpoint_path"], logger)
+            model = model.load(job["start_from_checkpoint_path"], logger)
 
     logger.debug(f"Model:\n{model}")
     logger.debug("Total number of parameters: "
@@ -173,7 +173,10 @@ def _process_job(
     )
     SCHEDULER = None
     SCHEDULER = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        OPTIMISER, mode='min', patience=10, factor=0.5
+        OPTIMISER, 
+        mode='min', 
+        patience=10, 
+        factor=0.5
     )
     LOSS_FN = YOLOv1Loss(job["lambda_coord"], job["lambda_noobj"])
     EARLY_STOPPER = EarlyStopper(15, 0.01)
