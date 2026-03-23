@@ -16,6 +16,7 @@ general:
 jobs:
     job0:
         model: "yolo"
+        start_from_checkpoint_path: "assignment_4/models/classification_backbone.pth"
         input_image_size: 112
         train_val_test_split : [.72, .18, .1]
         batch_size : 8

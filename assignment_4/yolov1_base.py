@@ -76,13 +76,37 @@ class YOLOv1Base(nn.Module):
         """
         return self.head(self.backbone(x))
 
-    def save(self, dir: str)-> None:
+    def save(self, destination: str)-> None:
         """
         Save internal state to file.
 
-        :param dir: Directory to output model to.
-        :type dir: str
+        :param destination: Directory/file to output model to.
+        :type destination: str
         """
-        filename = f"{dir}/best_{self.__class__.__name__}.pth"
+        filename = f"{destination}/best_{self.__class__.__name__}.pth"
+        if ".pth" in destination:
+            filename = destination
         self.logger.info(f"Saving model to {filename}...")
         torch.save(self, filename)
+
+    @classmethod
+    def load(cls, source: str, logger: logging.Logger)-> YOLOv1Base:
+        """
+        Load a model from a file.
+
+        :param source: Directory or .pth file to load the model from.
+            If a directory is given, loads 'best_YOLOv1Base.pth'.
+        :type source: str
+        :param logger: Logger to assign to the loaded model, as it would
+            otherwise load the old logger.
+        :type logger: logging.Logger
+        :return: The loaded model instance.
+        :rtype: YOLOv1Base
+        """
+        filename = f"{source}/best_{cls.__name__}.pth"
+        if ".pth" in source:
+            filename = source
+        logger.info(f"Loading model from {filename}...")
+        model = torch.load(filename, weights_only=False)
+        model.logger = logger
+        return model

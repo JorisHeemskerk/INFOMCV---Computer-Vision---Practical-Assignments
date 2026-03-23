@@ -224,5 +224,7 @@ output/*
 *.pth
 output/*/
 *.yml
+!*/data/.gitkeep
+!assignment_4/pretrain_classification.ipynb
 
 .vscode/
