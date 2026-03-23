@@ -1,5 +1,5 @@
 import torch
-from decode import unpack_cube
+from decode import decode_predictions
 
 def pairwise_iou(boxes_a: torch.Tensor, boxes_b: torch.Tensor) -> torch.Tensor:
     """
@@ -49,8 +49,9 @@ def compute_map(
         - mAP scalar tensor
         - per-class AP tensor of shape (C,)
     """
-    pred_x, pred_y, pred_w, pred_h, pred_conf, pred_cls = unpack_cube(y_hat)
-    true_x, true_y, true_w, true_h, true_conf, true_cls = unpack_cube(y)
+    pred_x, pred_y, pred_w, pred_h, pred_conf, pred_cls = \
+        decode_predictions(y_hat)
+    true_x, true_y, true_w, true_h, true_conf, true_cls = decode_predictions(y)
 
     B, S, _ = pred_x.shape
     C       = pred_cls.shape[-1]

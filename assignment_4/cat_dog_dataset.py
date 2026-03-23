@@ -102,22 +102,23 @@ class CatDogDataset(Dataset):
         :returns: YOLO compatible target.
         :rtype: torch.Tensor
         """
-        # Shorten the grid_size, for improved reading clarity.
-        S = self.grid_size
-
-        # 5 for [x, y, w, y, objectness]
-        target = torch.zeros(S, S, 5 + len(self.label_map))
+        target = torch.zeros(
+            self.grid_size, 
+            self.grid_size, 
+            # 5 for [x, y, w, y, objectness]
+            5 + len(self.label_map)
+        )
 
         for (cx, cy, w, h), label in zip(norm_bboxes, labels):
             if label < 0:
                 continue
 
             # Translate x, y to cell in grid.
-            col = min(int(cx * S), S - 1)
-            row = min(int(cy * S), S - 1)
+            col = min(int(cx * self.grid_size), self.grid_size - 1)
+            row = min(int(cy * self.grid_size), self.grid_size - 1)
 
-            x_cell = cx * S - col
-            y_cell = cy * S - row
+            x_cell = cx * self.grid_size - col
+            y_cell = cy * self.grid_size - row
 
             class_vec = torch.zeros(len(self.label_map))
             class_vec[label] = 1.0
@@ -173,33 +174,3 @@ class CatDogDataset(Dataset):
             image = self.transform(image)
 
         return image, self._targets[idx]
-
-
-    # def __getitem__(self, idx):
-    #     img_path = self.img_files[idx]
-    #     ann_path = self.ann_files[idx]
-
-    #     image = Image.open(img_path).convert("RGB")
-    #     width, height, objects = self.parse_annotation(ann_path)
-
-    #     norm_bboxes, labels = [], []
-    #     for obj in objects:
-    #         xmin, ymin, xmax, ymax = obj["bbox"]
-    #         cx, cy, w, h = self.xyxy_to_cxcywh_normalised(
-    #             xmin, 
-    #             ymin, 
-    #             xmax, 
-    #             ymax, 
-    #             width, 
-    #             height
-    #         )
-    #         norm_bboxes.append((cx, cy, w, h))
-    #         labels.append(obj["label"])
-        
-    #     # reshape to grid_size * grid_size * 7 
-    #     target = self.build_yolo_target(norm_bboxes, labels)
-
-    #     if self.transform:
-    #         image = self.transform(image)
-
-    #     return image, target

@@ -1,33 +1,35 @@
 import argparse
-import datetime
 import logging
-import pytz
+import numpy as np
+import os
+import shutil
 import torch
 import traceback
 import yaml
 
-import numpy as np
-
 from jsonschema import validate, ValidationError
 from sklearn.model_selection import train_test_split
 from torchvision import transforms
-from torch.utils.data import Dataset
+from torch.utils.data import ConcatDataset
 from typing import Any
+
+import handle_output
 
 from cat_dog_dataset import CatDogDataset
 from create_logger import create_logger
 from config.config_validation_template import CONFIG_TEMPLATE
 from data import to_dataloaders
-from train import train, test_classes
-from visualise import visualise_batch
+from early_stopper import EarlyStopper
+from train import train, predict_epoch, train_cross_validation
+from visualise import visualise_batch, visualise_training
 from yolov1_base import YOLOv1Base
+from yolov1_resnet import YOLOv1ResNet
 from yolov1_loss import YOLOv1Loss
 
 
 def _process_job(
     job: dict[str, Any], 
     job_id: int, 
-    dataset: Dataset, 
     logger: logging.Logger
 )-> None:
     """
@@ -37,11 +39,39 @@ def _process_job(
     :type job: dict[str, Any]
     :param job_id: ID of the current job (for logging).
     :type job_id: int
-    :param dataset: Complete dataset object
-    :type dataset: Dataset
     :param logger: Logger to log to.
     :type logger: logging.Logger
     """
+    ############ Change output dir to specific job folder. #############
+    handle_output.OUTPUT_DIR = f"{handle_output.OUTPUT_DIR}job_{job_id}/" if \
+        job_id == 0 else "/".join(
+            handle_output.OUTPUT_DIR.split("/")[:-2]
+        ) + f"/job_{job_id}/"
+    os.makedirs(handle_output.OUTPUT_DIR)
+
+    ####################################################################
+    #                          Load the data.                          #
+    ####################################################################
+    dataset = CatDogDataset(
+        img_dir=CONFIG["general"]["data_images_path"], 
+        ann_dir=CONFIG["general"]["data_annotations_path"], 
+        input_img_size=job["input_image_size"],
+        grid_size=CONFIG["general"]["grid_size"],
+        logger=logger,
+        transform=transforms.Compose([
+            transforms.Resize((
+                job["input_image_size"],
+                job["input_image_size"]
+            )),
+            transforms.ToTensor(),
+            # These numbers are from ImageNet, for normalisation.
+            transforms.Normalize(
+                mean=[0.485, 0.456, 0.406],   
+                std=[0.229, 0.224, 0.225]
+            )
+        ]),
+    )
+
     ####################################################################
     #                      Create the DataLoaders.                     #
     ####################################################################
@@ -49,7 +79,7 @@ def _process_job(
     labels = dataset._labels
     indices = list(range(len(dataset)))
     
-    # Split in a stratisfied manner.
+    ################## Split in a stratisfied manner. ##################
     train_idx, val_test_idx, _, val_test_labels = train_test_split(
         indices, 
         labels,
@@ -73,23 +103,43 @@ def _process_job(
         f"{len(train_dataset)= }, {len(val_dataset)= }, {len(test_dataset)= }"
     )
 
+    ########## Convert DataSet objects to DataLoader objects. ##########
     train_dataloader, val_dataloader, test_dataloader = to_dataloaders(
         [train_dataset, val_dataset, test_dataset], 
         batch_sizes=[job["batch_size"]] * 3, 
         shuffles=[True, True, False],
         logger=logger,
+        num_workers=CONFIG["general"]["num_data_workers"],
+        pin_memory=True,
+        persistent_workers=True
         # collate_fn=lambda x: tuple(zip(*x)) # TODO: why is this needed????????????
     )
 
-    # Save quick example of the training dataloader to file.
+    ###### Save quick example of the training dataloader to file. ######
     logger.debug("Visualising the first batch of the train dataloader.")
-    visualise_batch(train_dataloader, "assignment_4/visualised_batch.png")
+    visualise_batch(
+        train_dataloader, 
+        job["plotting_conf_threshold"], 
+        f"{handle_output.OUTPUT_DIR}train_batch_1_true.png"
+    )
 
     ####################################################################
-    #                          Load the model.                         #
+    #                     Load the (correct) model.                    #
     ####################################################################
-    logger.debug("Initialising the model.")
-    model = YOLOv1Base(logger)
+    logger.debug(f"Initialising the model ({job['model']})")
+    models = {
+        "yolov1base": (YOLOv1Base, {"logger": logger}), 
+        "yolov1resnet": (YOLOv1ResNet, {
+            "logger": logger,
+            "freeze_backbone" : False # TODO: should we freeze these weights?
+        })
+    }
+    model = None
+    for name, (cls, kwargs) in models.items():
+        if job['model'].lower() in name:
+            model = cls(**kwargs)
+            break
+    assert model is not None, "Provided model in config does not exist."
     logger.debug(f"Model:\n{model}")
     logger.debug("Total number of parameters: "
         f"{sum(p.numel() for p in model.parameters()):,}"
@@ -102,79 +152,160 @@ def _process_job(
     ####################################################################
     OPTIMISER = torch.optim.Adam(
         params=model.parameters(),
-        lr=job["learning_rate"]
+        lr=job["learning_rate"],
+        weight_decay=1e-4
     )
     SCHEDULER = None
+    SCHEDULER = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        OPTIMISER, mode='min', patience=10, factor=0.5
+    )
     LOSS_FN = YOLOv1Loss(job["lambda_coord"], job["lambda_noobj"])
+    EARLY_STOPPER = EarlyStopper(15, 0.01)
 
-    train_losses, train_accuracies, val_losses, val_accuracies, model = \
-        train(
+    # Arguments used by both normal training and cross_validation
+    arguments = {
+        "model" : model,
+        "loss_fn" : LOSS_FN,
+        "optimiser": OPTIMISER,
+        "scheduler" : SCHEDULER,
+        "early_stopper" : EARLY_STOPPER,
+        "n_epochs" : job["n_epochs"],
+        "device" : DEVICE,
+        "grid_size" : CONFIG["general"]["grid_size"],
+        "iou_thresholds" : job["iou_thresholds"],
+        "conf_threshold" : job["conf_threshold"],
+        "logger" : logger
+    }
+    # Only perform cross validation on k >= 2.
+    # Normal training, no folds.
+    if job["k_folds"] <= 1:
+        train_losses, train_mAPs, val_losses, val_mAPs, model = train(
             train_dataloader=train_dataloader, 
             val_dataloader=val_dataloader,
-            model=model,
-            loss_fn=LOSS_FN,
-            optimiser=OPTIMISER,
-            scheduler=SCHEDULER,
-            n_epochs=job["n_epochs"],
-            device=DEVICE,
-            grid_size=CONFIG["general"]["grid_size"],
-            iou_threshold=job["iou_threshold"],
-            conf_threshold=job["conf_threshold"],
-            logger=logger
+            **arguments
         )
-    train_losses_std, train_accuracies_std = None, None
-    val_losses_std, val_accuracies_std = None, None
+        train_losses_std, train_mAPs_std = None, None
+        val_losses_std, val_mAPs_std = None, None
+    # Training with k-folds
+    else:
+        all_train_dataset = ConcatDataset([train_dataset, val_dataset])
 
+        train_losses, train_mAPs, val_losses, val_mAPs, model = \
+            train_cross_validation(
+                full_train_dataset=all_train_dataset,
+                k_folds=job["k_folds"],
+                dataset_to_dataloader_function=lambda dataset: to_dataloaders(
+                    [dataset],
+                    batch_sizes=[job["batch_size"]],
+                    shuffles=[False],
+                    logger=logger,
+                    num_workers=CONFIG["general"]["num_data_workers"],
+                    pin_memory=True,
+                    persistent_workers=True
+                ),
+                **arguments, 
+            )
+        # Combine all folds into 1, remembering the data distributions.
+        loss_keys = train_losses.keys()
+        mAP_keys = train_mAPs.keys()
+
+        mean_func = lambda x, y: {k: np.nanmean(x[k], axis=0) for k in y}
+        std_func = lambda x, y: {k: np.nanstd(x[k], axis=0) for k in y}
+        
+        train_losses_std = std_func(train_losses, loss_keys)
+        train_losses = mean_func(train_losses, loss_keys)
+        
+        val_losses_std = std_func(val_losses, loss_keys)
+        val_losses = mean_func(val_losses, loss_keys)
+        
+        train_mAPs_std = std_func(train_mAPs, mAP_keys)
+        train_mAPs = mean_func(train_mAPs, mAP_keys)
+
+        val_mAPs_std = std_func(val_mAPs, mAP_keys)
+        val_mAPs = mean_func(val_mAPs, mAP_keys)
+    
+    # Save the best performing model (based on the validation set).
+    model.save(handle_output.OUTPUT_DIR)
     ####################################################################
     #                         Show the results.                        #
     ####################################################################
-    print(
-        f"\033[32mBest  training  mAP: {max(train_accuracies)}, achieved "
-        f"during epoch {np.argmax(train_accuracies) + 1}.\nBest validation "
-        f"mAP: {max(val_accuracies)}, achieved during epoch "
-        f"{np.argmax(val_accuracies) + 1}.\033[37m"
+    ########### Log the best training and validation scores. ###########
+    # TODO: what if the first threshold is not the best for this?
+    mAP_train_string = ", ".join(
+        f"mAP@{threshold}: {np.max(train_mAPs[str(threshold)])*100:<2f}%"
+        for threshold in job["iou_thresholds"]
+    )
+    train_best_epoch = np.nanargmax(
+        train_mAPs[str(job["iou_thresholds"][0])]
+    ) + 1
+    mAP_val_string = ", ".join(
+        f"mAP@{threshold}: {np.max(val_mAPs[str(threshold)])*100:<2f}%"
+        for threshold in job["iou_thresholds"]
+    )
+    val_best_epoch = np.nanargmax(val_mAPs[str(job["iou_thresholds"][0])]) + 1
+    logger.critical(
+        f"Best training scores: {mAP_train_string} | "
+        f"achieved during epoch {train_best_epoch}."
+    )
+    logger.critical(
+        f"Best validation scores: {mAP_val_string} | "
+        f"achieved during epoch {val_best_epoch}."
     )
 
-    test_loss, test_mAP = test_classes(
-        dataloader=test_dataloader,
+    ############### Produce all the loss and mAP figures. ##############
+    visualise_training(
+        train_losses, 
+        train_mAPs, 
+        val_losses, 
+        val_mAPs, 
+        handle_output.OUTPUT_DIR,
+        train_losses_std, 
+        train_mAPs_std, 
+        val_losses_std, 
+        val_mAPs_std
+    )
+
+    ###### Predict on the validation set, then visualise batch 1. ######
+    predict_epoch(
+        dataloader=val_dataloader,
         model=model,
         loss_fn=LOSS_FN,
         device=DEVICE,
         grid_size=CONFIG["general"]["grid_size"],
-        iou_threshold=job["iou_threshold"],
+        iou_thresholds=job["iou_thresholds"],
         conf_threshold=job["conf_threshold"],
+        plotting_conf_threshold=job["plotting_conf_threshold"],
+        visualise_first_batch=True,
         logger=logger
     )
-    print(
-        f"\033[32mTest mAP: {test_mAP}, "
-        f"Test error | avg loss: {test_loss["total"]:>7f} | xy "
-        f"loss: {test_loss["xy"]:>2f}, wh loss: {test_loss["wh"]:>2f}"
-        f", conf loss: {test_loss["conf_obj"]:>2f}, noobj conf loss:"
-        f" {test_loss["conf_noobj"]:>2f}, class loss: "
-        f"{test_loss["cls"]:>2f} |"
-    )
+    ####################################################################
+    #                          Apply test set.                         #
+    ####################################################################
+    
+    # TODO: comment in once final hyperparameters are selected
+
+    # test_loss, test_mAP = predict_epoch(
+    #     dataloader=test_dataloader,
+    #     model=model,
+    #     loss_fn=LOSS_FN,
+    #     device=DEVICE,
+    #     grid_size=CONFIG["general"]["grid_size"],
+    #     iou_thresholds=job["iou_thresholds"],
+    #     conf_threshold=job["conf_threshold"],
+    #     logger=logger
+    # )
+    # print(
+    #     f"\033[32mTest mAP: {test_mAP}, "
+    #     f"Test error | avg loss: {test_loss["total"]:>7f} | xy "
+    #     f"loss: {test_loss["xy"]:>2f}, wh loss: {test_loss["wh"]:>2f}"
+    #     f", conf loss: {test_loss["conf_obj"]:>2f}, noobj conf loss:"
+    #     f" {test_loss["conf_noobj"]:>2f}, class loss: "
+    #     f"{test_loss["cls"]:>2f} |"
+    # )
 
 
 
 def main()-> None:
-    ####################################################################
-    #                          Load the data.                          #
-    ####################################################################
-    dataset = CatDogDataset(
-        img_dir=CONFIG["general"]["data_images_path"], 
-        ann_dir=CONFIG["general"]["data_annotations_path"], 
-        input_img_size=CONFIG["general"]["input_image_size"],
-        grid_size=CONFIG["general"]["grid_size"],
-        logger=logger,
-        transform=transforms.Compose([
-            transforms.Resize((
-                CONFIG["general"]["input_image_size"],
-                CONFIG["general"]["input_image_size"]
-            )),
-            transforms.ToTensor()
-        ]),
-    )
-
     ####################################################################
     #                         Execute all jobs.                        #
     ####################################################################
@@ -197,7 +328,6 @@ def main()-> None:
             _process_job(
                 job=job,
                 job_id=i, 
-                dataset=dataset,
                 logger=logger
             )
         except KeyboardInterrupt as e:
@@ -232,12 +362,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Initialise Logger.
-    date = datetime.datetime.now(
-        tz=pytz.timezone('Europe/Amsterdam')).strftime('%d-%m-%Y--%H-%M'
-    )
+    os.makedirs(handle_output.OUTPUT_DIR, exist_ok=True)
     logger = create_logger(
         name="Computer Vision - Assignment 4", 
-        output_log_file_name=f"assignment_4/logging/{date}.log"
+        output_log_file_name=f"{handle_output.OUTPUT_DIR}process.log"
     )
     logger.info(f"Provided commandline arguments: {args.__dict__}")
 
@@ -259,6 +387,7 @@ if __name__ == "__main__":
             "\x1b[31;1mA validation error occurred in the config file" \
             f": {e.message}\x1b[0m"
         ) from e
+    shutil.copy(args.config_file_path, handle_output.OUTPUT_DIR + "config.yml")
 
     ## Execute main. ###################################################
     main()
