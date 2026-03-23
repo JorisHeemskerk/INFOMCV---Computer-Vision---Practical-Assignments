@@ -174,33 +174,3 @@ class CatDogDataset(Dataset):
             image = self.transform(image)
 
         return image, self._targets[idx]
-
-
-    # def __getitem__(self, idx):
-    #     img_path = self.img_files[idx]
-    #     ann_path = self.ann_files[idx]
-
-    #     image = Image.open(img_path).convert("RGB")
-    #     width, height, objects = self.parse_annotation(ann_path)
-
-    #     norm_bboxes, labels = [], []
-    #     for obj in objects:
-    #         xmin, ymin, xmax, ymax = obj["bbox"]
-    #         cx, cy, w, h = self.xyxy_to_cxcywh_normalised(
-    #             xmin, 
-    #             ymin, 
-    #             xmax, 
-    #             ymax, 
-    #             width, 
-    #             height
-    #         )
-    #         norm_bboxes.append((cx, cy, w, h))
-    #         labels.append(obj["label"])
-        
-    #     # reshape to grid_size * grid_size * 7 
-    #     target = self.build_yolo_target(norm_bboxes, labels)
-
-    #     if self.transform:
-    #         image = self.transform(image)
-
-    #     return image, target

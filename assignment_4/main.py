@@ -10,7 +10,7 @@ import yaml
 from jsonschema import validate, ValidationError
 from sklearn.model_selection import train_test_split
 from torchvision import transforms
-from torch.utils.data import Dataset, ConcatDataset
+from torch.utils.data import ConcatDataset
 from typing import Any
 
 import handle_output
@@ -132,7 +132,8 @@ def _process_job(
         "yolov1resnet": (YOLOv1ResNet, {
             "logger": logger,
             "freeze_backbone" : False # TODO: should we freeze these weights?
-        })}
+        })
+    }
     model = None
     for name, (cls, kwargs) in models.items():
         if job['model'].lower() in name:
@@ -179,8 +180,8 @@ def _process_job(
     # Normal training, no folds.
     if job["k_folds"] <= 1:
         train_losses, train_mAPs, val_losses, val_mAPs, model = train(
-        train_dataloader=train_dataloader, 
-        val_dataloader=val_dataloader,
+            train_dataloader=train_dataloader, 
+            val_dataloader=val_dataloader,
             **arguments
         )
         train_losses_std, train_mAPs_std = None, None

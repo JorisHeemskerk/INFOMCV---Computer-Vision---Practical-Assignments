@@ -1,9 +1,9 @@
 import logging
-import torch
 import torch.nn as nn
 from torchvision.models import resnet18, ResNet18_Weights
 
 from yolov1_base import YOLOv1Base
+
 
 class YOLOv1ResNet(YOLOv1Base):
     """
@@ -11,10 +11,10 @@ class YOLOv1ResNet(YOLOv1Base):
     """
 
     def __init__(
-            self, 
-            logger: logging.Logger, 
-            freeze_backbone: bool=False,
-        ) -> None:
+        self, 
+        logger: logging.Logger, 
+        freeze_backbone: bool=False,
+    ) -> None:
         """
         Define the convolutional, pooling and fully connected layers.
 

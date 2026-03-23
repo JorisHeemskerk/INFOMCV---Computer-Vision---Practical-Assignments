@@ -155,7 +155,6 @@ def draw_boxes(
 
     return image
 
-
 @dispatch
 def visualise_batch(
     dataloader: DataLoader, 

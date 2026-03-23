@@ -15,12 +15,12 @@ general:
     num_data_workers: 4 # Number of workers preparing batches.
 jobs:
     job0:
-        model: "resnet"
-        input_image_size: 224
-        train_val_test_split : [.8, .1, .1]
+        model: "yolo"
+        input_image_size: 112
+        train_val_test_split : [.72, .18, .1]
         batch_size : 8
         n_epochs: 100
-        k_folds: 5
+        k_folds: 1
         learning_rate:  .00001 # 1e-5
         lambda_coord: 5
         lambda_noobj: .5
