@@ -20,7 +20,7 @@ from create_logger import create_logger
 from config.config_validation_template import CONFIG_TEMPLATE
 from data import to_dataloaders
 from early_stopper import EarlyStopper
-from train import train, predict_epoch, train_cross_validation
+from train import train, predict_epoch, train_cross_validation, compute_epoch_map
 from visualise import visualise_batch, visualise_training
 from yolov1_base import YOLOv1Base
 from yolov1_resnet import YOLOv1ResNet
@@ -251,6 +251,12 @@ def _process_job(
         f"Best validation scores: {mAP_val_string} | "
         f"achieved during epoch {val_best_epoch}."
     )
+    val_epoch_map = compute_epoch_map(model, val_dataloader, DEVICE, CONFIG["general"]["grid_size"], job["iou_thresholds"], job["conf_threshold"])
+    mAP_val_epoch_string = ", ".join(
+        f"mAP@{threshold}: {val_epoch_map[str(threshold)]*100:<2f}%"
+        for threshold in job["iou_thresholds"]
+    )
+    logger.critical(f"Validation over all images: {mAP_val_epoch_string}")
 
     ############### Produce all the loss and mAP figures. ##############
     visualise_training(

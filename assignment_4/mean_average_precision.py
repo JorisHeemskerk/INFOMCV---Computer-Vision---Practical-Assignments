@@ -36,19 +36,6 @@ def compute_map(
     iou_threshold: float = 0.5,
     conf_threshold: float = 0.05,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """
-    Compute mean Average Precision (mAP) over all classes without any
-    Python-level loops — all operations are vectorised across classes,
-    predictions, and ground truths simultaneously.
-
-    :param y_hat: Prediction cube, shape (B, S, S, 5+C).
-    :param y: Target cube, same shape as y_hat.
-    :param iou_threshold: IoU threshold for a detection to count as a TP.
-    :param conf_threshold: Minimum objectness x class-score to keep a prediction.
-    :return:
-        - mAP scalar tensor
-        - per-class AP tensor of shape (C,)
-    """
     pred_x, pred_y, pred_w, pred_h, pred_conf, pred_cls = \
         decode_predictions(y_hat)
     true_x, true_y, true_w, true_h, true_conf, true_cls = decode_predictions(y)

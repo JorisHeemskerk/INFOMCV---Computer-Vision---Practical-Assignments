@@ -598,3 +598,61 @@ def predict_epoch(
     return \
         {key: value / len(dataloader) for key, value in test_losses.items()}, \
         {key: np.mean(value) for key, value in test_mAPs.items()}
+
+def compute_epoch_map(
+    model: nn.Module,
+    dataloader: DataLoader,
+    device: str,
+    grid_size: int,
+    iou_thresholds: list[float],
+    conf_threshold: float,
+) -> dict[str, float]:
+    """
+    Compute mAP over an entire dataloader in one pass by caching
+    all predictions and targets, then evaluating them together.
+
+    :param model: The model to evaluate.
+    :type model: nn.Module
+    :param dataloader: Dataset to evaluate.
+    :type dataloader: DataLoader
+    :param device: Device to move data to.
+    :type device: str
+    :param grid_size: Size of the grid.
+    :type grid_size: int
+    :param iou_thresholds: List of IoU thresholds to evaluate at.
+    :type iou_thresholds: list[float]
+    :param conf_threshold: Confidence threshold for predictions.
+    :type conf_threshold: float
+    :returns: Dict mapping e.g. "0.5" -> mAP value.
+    :rtype: dict[str, float]
+    """
+    model.eval()
+    all_preds: list[torch.Tensor] = []
+    all_targets: list[torch.Tensor] = []
+
+    with torch.no_grad():
+        for images, targets in dataloader:
+            images = images.to(device)
+            targets = targets.to(device)
+
+            raw_preds = model(images)
+
+            preds_cube = raw_preds.view(-1, grid_size, grid_size, 7)
+
+            all_preds.append(preds_cube.cpu())
+            all_targets.append(targets.cpu())
+
+    # Concatenate along batch dim -> (N_total, S, S, 7)
+    y_hat_full = torch.cat(all_preds, dim=0)
+    y_full = torch.cat(all_targets, dim=0)
+
+    mAPs = {}
+    for threshold in iou_thresholds:
+        mAPs[str(threshold)] = compute_map(
+            y_hat=y_hat_full,
+            y=y_full,
+            iou_threshold=threshold,
+            conf_threshold=conf_threshold,
+        ).item()
+
+    return mAPs
