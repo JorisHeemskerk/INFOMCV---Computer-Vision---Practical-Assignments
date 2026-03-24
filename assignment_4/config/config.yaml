@@ -16,13 +16,13 @@ general:
 jobs:
     job0:
         model: "yolo"
-        start_from_checkpoint_path: "assignment_4/models/classification_backbone.pth"
+        start_from_checkpoint_path: None #"assignment_4/models/classification_backbone.pth"
         input_image_size: 112
         train_val_test_split : [.72, .18, .1]
         batch_size : 8
-        n_epochs: 100
+        n_epochs: 400
         k_folds: 1
-        learning_rate:  .00001 # 1e-5
+        learning_rate: .00001 # 1e-5
         lambda_coord: 5
         lambda_noobj: .5
         iou_thresholds: [.5, .9]
