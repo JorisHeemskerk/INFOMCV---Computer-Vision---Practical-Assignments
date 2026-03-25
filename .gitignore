@@ -222,5 +222,7 @@ output/*
 *.mp4
 *.ipynb
 *.pth
+output/*/
+*.yml
 
 .vscode/
