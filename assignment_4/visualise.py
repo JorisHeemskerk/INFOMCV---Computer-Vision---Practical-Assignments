@@ -384,6 +384,8 @@ def visualise_training(
     :type val_mAPs_std: dict[str, torch.Tensor] | None
     """
     fig_mAP, ax_mAP = plt.subplots(nrows=1, ncols=len(train_mAPs))
+    if len(train_mAPs) == 1:
+        ax_mAP = [ax_mAP]
     epochs = range(len(train_losses[list(train_losses.keys())[0]]))
 
     def plot_with_band(axis, values, std, label):
