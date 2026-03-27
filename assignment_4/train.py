@@ -7,12 +7,12 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset, Subset
 from typing import Callable
 from tqdm import tqdm
-from mean_average_precision import compute_map
+from mean_average_precision import calculate_map
 
 import handle_output
 
 from early_stopper import EarlyStopper
-from mean_average_precision import compute_map
+from mean_average_precision import calculate_map
 from visualise import visualise_batch
 
 
@@ -390,7 +390,7 @@ def train_epoch(
         
         for iou_threshold in train_mAPs.keys():
             train_mAPs[iou_threshold].append(
-                compute_map(
+                calculate_map(
                     y_hat, 
                     y, 
                     float(iou_threshold), 
@@ -480,7 +480,7 @@ def val_epoch(
             
             for iou_threshold in val_mAPs.keys():
                 val_mAPs[iou_threshold].append(
-                    compute_map(
+                    calculate_map(
                         y_hat, 
                         y, 
                         float(iou_threshold), 
@@ -587,7 +587,7 @@ def predict_epoch(
             
             for iou_threshold in test_mAPs.keys():
                 test_mAPs[iou_threshold].append(
-                    compute_map(
+                    calculate_map(
                         y_hat, 
                         y, 
                         float(iou_threshold), 
@@ -642,13 +642,12 @@ def compute_epoch_map(
             all_preds.append(preds_cube.cpu())
             all_targets.append(targets.cpu())
 
-    # Concatenate along batch dim -> (N_total, S, S, 7)
     y_hat_full = torch.cat(all_preds, dim=0)
     y_full = torch.cat(all_targets, dim=0)
 
     mAPs = {}
     for threshold in iou_thresholds:
-        mAPs[str(threshold)] = compute_map(
+        mAPs[str(threshold)] = calculate_map(
             y_hat=y_hat_full,
             y=y_full,
             iou_threshold=threshold,

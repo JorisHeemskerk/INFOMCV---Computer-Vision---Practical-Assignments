@@ -4,7 +4,7 @@ from decode import decode_predictions
 
 def pairwise_iou(boxes_a: torch.Tensor, boxes_b: torch.Tensor) -> torch.Tensor:
     """
-    Compute pairwise IoU between two sets of boxes.
+    Calculate pairwise IoU between two sets of boxes.
 
     :param boxes_a: Box parameters in (N, cx, cy, w, h) format.
     :type boxes_a: torch.Tensor
@@ -47,140 +47,166 @@ def pairwise_iou(boxes_a: torch.Tensor, boxes_b: torch.Tensor) -> torch.Tensor:
     # clamp union to prevent zero division
     return inter_area / union_area.clamp(min=1e-6)
 
-def compute_map(
+def calculate_map(
     y_hat: torch.Tensor,
     y: torch.Tensor,
     iou_threshold: float,
     conf_threshold: float
 ) -> torch.Tensor:
     """
-    
+    Calculate the mean average precision(mAP) over a batch of
+    predictions and ground truths. Predictions are first filtered by a
+    confidence threshold, then further filtered by a intersection over
+    union (IoU) threshold. Each ground truth is only matched once,
+    preferring the prediction with the highest confidence. The average
+    precision is calculated per class before and are then averaged over
+    all classes that appear in the batch.
+
+    Inspiration for many functionalities came from:
+    https://jonathan-hui.medium.com/map-mean-average-precision-for-object-detection-45c121a31173
+
+    :param y_hat: Model predictions in cube format.
+    :type y_hat: torch.Tensor
+    :param y: Ground truths in cube format.
+    :type y: torch.Tensor
+    :param iou_threshold: IoU threshold above which a prediction is 
+        considered a match with a ground truth prediction.
+    :type iou_threshold: float
+    :param conf_threshold: Objectness threshold above which predictions
+        are kept.
+    :type conf_threshold: float
+    :returns: The mAP of the predictions.
+    :rtype: torch.Tensor
     """
-    pred_x, pred_y, pred_w, pred_h, pred_conf, pred_cls = \
+    pred_x, pred_y, pred_w, pred_h, pred_obj, pred_cls = \
         decode_predictions(y_hat)
-    true_x, true_y, true_w, true_h, true_conf, true_cls = decode_predictions(y)
+    true_x, true_y, true_w, true_h, true_obj, true_cls = decode_predictions(y)
 
     batches, grid_size, _ = pred_x.shape
-    C = pred_cls.shape[-1]
+    n_classes = pred_cls.shape[-1]
     batch_grid_cells = batches * grid_size * grid_size
     device = y_hat.device
 
     # Keep track of which image each cell came from.
     batch_idx = (
-        torch.arange(
-            batches,
-            device=device
-        ).unsqueeze(1).expand(batches, grid_size * grid_size).reshape(batch_grid_cells, 1).float()
+        torch.arange(batches, device=device)
+            .unsqueeze(1)
+            .expand(batches, grid_size * grid_size)
+            .reshape(batch_grid_cells, 1)
+            .float()
     )
 
+    # Stack box info (cx, cy, w, h) into shape (batch_grid_cells, 4).
     pred_boxes = torch.stack(
         [pred_x, pred_y, pred_w, pred_h],
         dim=-1
     ).reshape(batch_grid_cells, 4)
 
-    gt_boxes = torch.stack(
+    true_boxes = torch.stack(
         [true_x, true_y, true_w, true_h],
         dim=-1
     ).reshape(batch_grid_cells, 4)
 
-    pred_conf = pred_conf.reshape(batch_grid_cells, 1)
-    gt_conf = true_conf.reshape(batch_grid_cells)
-    pred_cls = pred_cls.reshape(batch_grid_cells, C)
-    gt_cls = true_cls.reshape(batch_grid_cells, C)
+    # Flatten per-cell predictions so every cell can be used independently.
+    pred_obj = pred_obj.reshape(batch_grid_cells, 1)
+    true_obj = true_obj.reshape(batch_grid_cells)
+    pred_cls = pred_cls.reshape(batch_grid_cells, n_classes)
+    true_cls = true_cls.reshape(batch_grid_cells, n_classes)
 
-    # ------------------------------------------------------------------ #
-    # 2. Separate predictions and ground truths                          #
-    # ------------------------------------------------------------------ #
-    gt_mask = gt_conf > 0.5
-    gt_boxes = gt_boxes[gt_mask]
-    gt_cls = gt_cls[gt_mask]
-    gt_batch = batch_idx[gt_mask]
+    # Filter ground truth to only keep grid cells that contain an object.
+    true_mask = true_obj > 0.5
+    true_boxes = true_boxes[true_mask]
+    true_cls = true_cls[true_mask]
+    true_batch = batch_idx[true_mask]
 
-    # Per-class confidence scores: objectness * class score -> (N, C)
-    cls_scores = pred_conf * pred_cls
+    # Calculate per-class confidence by multiplying the objectness and the 
+    # class prediction confidence.
+    cls_scores = pred_obj * pred_cls
 
-    # Keep predictions that exceed the threshold for *any* class
-    keep = pred_conf.squeeze(-1) >= conf_threshold
-    pred_boxes = pred_boxes[keep]
-    pred_batch = batch_idx[keep]
-    cls_scores = cls_scores[keep]
-
-    P = pred_boxes.shape[0]
-    G = gt_boxes.shape[0]
+    # Filter predictions to only keep grid cells that contain an object with an
+    # objectness above the confidence threshold.
+    pred_mask = pred_obj.squeeze(-1) >= conf_threshold
+    pred_boxes = pred_boxes[pred_mask]
+    cls_scores = cls_scores[pred_mask]
+    pred_batch = batch_idx[pred_mask]
 
     # If there are no predictions or ground truths left return mAP of zero.
-    if P == 0 or G == 0:
-        zero = torch.zeros(C, device=device)
-        return zero.mean()
+    if pred_boxes.shape[0] == 0 or true_boxes.shape[0] == 0:
+        return torch.zeros(n_classes, device=device).mean()
 
-    # ------------------------------------------------------------------ #
-    # 3. Sort ALL predictions by confidence (per class simultaneously)   #
-    #                                                                    #
-    # Shape: (C, P) — each row is the confidence-sorted order for that   #
-    # class.                                                             #
-    # ------------------------------------------------------------------ #
+    # Sort all predictions by per-class confidence.
     sort_idx = cls_scores.T.argsort(descending=True, dim=-1)
-    # Gather sorted boxes/batch indices per class
     pred_batch_sorted = pred_batch[sort_idx]
 
-    # ------------------------------------------------------------------ #
-    # 4. Pairwise IoU: (P, G) — class-agnostic, computed once            #
-    # ------------------------------------------------------------------ #
-    iou_mat = pairwise_iou(pred_boxes, gt_boxes)
+    # Match all predictions against all ground truths and compute their IoU.
+    iou_mat = pairwise_iou(pred_boxes, true_boxes)
 
-    # ------------------------------------------------------------------ #
-    # 5. Build (C, P, G) match tensors                                    #
-    # ------------------------------------------------------------------ #
-    # Re-index IoU and batch matrices into confidence-sorted order
-    # iou_sorted:   (C, P, G)
-    # batch_mask:   (C, P, G) — True only when pred and GT share a batch
+    # Sort IoU scores per class by per-class confidence.
     iou_sorted = iou_mat[sort_idx]
-    batch_pred = pred_batch_sorted
-    batch_gt = gt_batch.T.unsqueeze(0)
-    batch_mask = batch_pred == batch_gt
 
-    # GT class mask: GT g belongs to class c if gt_cls[g, c] == 1
-    # gt_cls_mask: (C, 1, G)
-    gt_cls_mask = gt_cls.T.unsqueeze(1)
+    # Create a mask per class for when a prediction and ground truth belong to
+    # the same image.
+    batch_true = true_batch.T.unsqueeze(0)
+    batch_mask = pred_batch_sorted == batch_true
 
-    # Zero out cross-image and cross-class IoU entries
-    iou_sorted = iou_sorted * batch_mask * gt_cls_mask
+    # Create a mask per class for when a ground truth image belongs to that
+    # class.
+    true_cls_mask = true_cls.T.unsqueeze(1)
 
-    # Best GT match per prediction
+    # Zero out iou scores that don't belong to the same image or the correct 
+    # class.
+    iou_sorted = iou_sorted * batch_mask * true_cls_mask
+
+    # For each prediction, find the ground truth with the highest IoU score and
+    # it's index, then create a mask for when the IoU is larger than the
+    # threshold.
     best_iou, best_gt = iou_sorted.max(dim=-1)
     is_match = best_iou >= iou_threshold
 
-    # One-hot encode the matched GT index: (C, P, G)
-    match_matrix = torch.zeros(C, P, G, device=device)
-    c_idx, p_idx = is_match.nonzero(as_tuple=True)
-    match_matrix[c_idx, p_idx, best_gt[c_idx, p_idx]] = 1.0
+    # Build a matrix where per class a 1 indicates that a prediction was
+    # matched to a ground truth.
+    match_matrix = torch.zeros(
+        n_classes,
+        pred_boxes.shape[0],
+        true_boxes.shape[0],
+        device=device
+    )
+    class_idx, pred_idx = is_match.nonzero(as_tuple=True)
+    match_matrix[class_idx, pred_idx, best_gt[class_idx, pred_idx]] = 1.0
 
-    # Deduplicate: each GT matched at most once (first/highest-conf hit wins)
-    # cumsum along P axis; any entry where cumsum > 1 is a duplicate
+    # Make sure each ground truth is only matched once by taking the cumulative
+    # sum and ensuring those that are duplicates aren't kept.
     cum_matches  = match_matrix.cumsum(dim=1)
     valid_match  = (cum_matches <= 1.0) & (match_matrix == 1.0)
 
+    # Decide per class true positives. True positives are when it had a valid
+    # match with it's ground truth. 
     tp = valid_match.any(dim=-1).float()
 
-    # ------------------------------------------------------------------ #
-    # 6. Precision-recall curve & AP via trapezoid — all classes at once  #
-    # ------------------------------------------------------------------ #
+    # Compute per class the cumulative true positives and false positives.
     cum_tp = tp.cumsum(dim=-1)
     cum_fp = (1.0 - tp).cumsum(dim=-1)
 
+    # Calculate per class the precision.
     precision = cum_tp / (cum_tp + cum_fp).clamp(min=1e-6)
 
-    # GT counts per class for recall denominator: (C,)
-    gt_per_class = gt_cls.sum(dim=0)
-    recall = cum_tp / gt_per_class.unsqueeze(-1).clamp(min=1e-6)
+    # Calculate recall by dividing cumulative true positives by the total
+    # number of ground truths per class.
+    true_per_class = true_cls.sum(dim=0)
+    recall = cum_tp / true_per_class.unsqueeze(-1).clamp(min=1e-6)
 
-    # Prepend (recall=0, precision=1) sentinel to each class curve
-    ones  = torch.ones(C, 1, device=device)
-    zeros = torch.zeros(C, 1, device=device)
+    # Ensure each precision-recall curve starts at recall = 0 and
+    # precision = 1.
+    ones  = torch.ones(n_classes, 1, device=device)
+    zeros = torch.zeros(n_classes, 1, device=device)
     precision = torch.cat([ones,  precision], dim=-1)
     recall = torch.cat([zeros, recall], dim=-1)
 
-    ap_per_class = torch.trapezoid(precision, recall, dim=-1).abs()
-    classes_with_gt = gt_per_class > 0
+    # Calculate the area under the precision-recall curve per class.
+    precision_env = precision.flip(-1).cummax(dim=-1).values.flip(-1)
+    ap_per_class = torch.trapezoid(precision_env, recall, dim=-1)
 
+    # Only calculate the mean over classes that had at least one ground truth
+    # box in this batch.
+    classes_with_gt = true_per_class > 0
     return ap_per_class[classes_with_gt].mean()
