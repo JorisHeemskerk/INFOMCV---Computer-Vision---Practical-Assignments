@@ -113,6 +113,7 @@ def main():
             IOU_THRESHOLDS, 
             threshold
         )
+        # exit()
         mAP_string = ", ".join(
             f"mAP@{iou}: {test_mAP[str(iou)]*100:<2f}%"
             for iou in IOU_THRESHOLDS

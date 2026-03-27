@@ -270,6 +270,21 @@ def _process_job(
         f"Best validation scores: {mAP_val_string} | "
         f"achieved during epoch {val_best_epoch}."
     )
+
+    ########### Get results on training and validation sets. ###########
+    train_epoch_map = compute_epoch_map(
+        model,
+        train_dataloader,
+        DEVICE,
+        CONFIG["general"]["grid_size"],
+        job["iou_thresholds"], 
+        job["conf_threshold"]
+    )
+    mAP_val_epoch_string = ", ".join(
+        f"mAP@{threshold}: {train_epoch_map[str(threshold)]*100:<2f}%"
+        for threshold in job["iou_thresholds"]
+    )
+    logger.critical(f"Training set over all images: {mAP_val_epoch_string}")
     val_epoch_map = compute_epoch_map(
         model,
         val_dataloader,
@@ -282,7 +297,8 @@ def _process_job(
         f"mAP@{threshold}: {val_epoch_map[str(threshold)]*100:<2f}%"
         for threshold in job["iou_thresholds"]
     )
-    logger.critical(f"Validation over all images: {mAP_val_epoch_string}")
+    logger.critical(f"Validation set over all images: {mAP_val_epoch_string}")
+    
     ############### Produce all the loss and mAP figures. ##############
     visualise_training(
         train_losses, 
@@ -325,7 +341,7 @@ def _process_job(
         f"mAP@{threshold}: {test_mAP[str(threshold)]*100:<2f}%"
         for threshold in job["iou_thresholds"]
     )
-    logger.critical(f"Validation over all images: {mAP_test_epoch_string}")
+    logger.critical(f"Test set over all images: {mAP_test_epoch_string}")
 
 
 

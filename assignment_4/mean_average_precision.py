@@ -206,7 +206,68 @@ def calculate_map(
     precision_env = precision.flip(-1).cummax(dim=-1).values.flip(-1)
     ap_per_class = torch.trapezoid(precision_env, recall, dim=-1)
 
+    # Print the info for confusion matrix (comment this line if not in use)
+    # print_confusion_matrix(cls_scores, true_cls, valid_match)
+
     # Only calculate the mean over classes that had at least one ground truth
     # box in this batch.
     classes_with_gt = true_per_class > 0
     return ap_per_class[classes_with_gt].mean()
+
+def print_confusion_matrix(
+    cls_scores: torch.Tensor,
+    true_cls: torch.Tensor,
+    valid_match: torch.Tensor
+)-> None:
+    """
+    Print a confusion matrix for the predictions. For each class: print
+    how many ground truths were matched to each class or were not 
+    matched (None).
+
+    :param cls_scores: Per-class confidence scores.
+    :type cls_scores: torch.Tensor
+    :param true_cls: Ground truth class labels.
+    :type true_cls: torch.Tensor
+    :param valid_match: Matrix containing the valid matches.
+    :type valid_match: torch.Tensor
+    """
+    # Get predicted class (highest class score) for the predictions.
+    pred_class = cls_scores.argmax(dim=-1)
+
+    # Get ground truths.  
+    true_class = true_cls.argmax(dim=-1)
+
+    # For each GT, find which predictions were matched to it.
+    pred_per_gt = valid_match.any(dim=0).T
+
+    for actual_cls_idx, cls_name in enumerate(["cat", "dog"]):
+        # Find all ground truths belonging to this class.
+        gt_indices = (true_class == actual_cls_idx).nonzero(as_tuple=True)[0]
+
+        counts = {"cat": 0, "dog": 0, "None": 0}
+        for gt_idx in gt_indices:
+            matched_preds = pred_per_gt[gt_idx].nonzero(as_tuple=True)[0]
+            if len(matched_preds) == 0:
+                counts["None"] += 1
+            else:
+                # Take the first matched prediction's class
+                pred_cls = pred_class[matched_preds[0]].item()
+                counts[["cat", "dog"][pred_cls]] += 1
+
+        print(
+            f"actual {cls_name}: "
+            f"predicted cat: {counts['cat']} times, "
+            f"predicted dog: {counts['dog']} times, "
+            f"predicted None: {counts['None']} times"
+        )
+
+    # Count ground truths that had no prediction.
+    # Also prints unmatched predictions -> actual None.
+    for pred_cls_idx, cls_name in enumerate(["cat", "dog"]):
+        pred_indices = (pred_class == pred_cls_idx).nonzero(as_tuple=True)[0]
+        unmatched = [
+            pred for pred in pred_indices if not pred_per_gt[:, pred].any()
+        ]
+        print(
+            f"predicted {cls_name}: actual None: {len(unmatched)} times"
+        )
