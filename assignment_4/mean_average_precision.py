@@ -59,6 +59,13 @@ def compute_map(
     pred_x, pred_y, pred_w, pred_h, pred_conf, pred_cls = \
         decode_predictions(y_hat)
     true_x, true_y, true_w, true_h, true_conf, true_cls = decode_predictions(y)
+    print(f"{true_x.shape = }")
+    print(f"{true_y.shape = }")
+    print(f"{true_w.shape = }")
+    print(f"{true_h.shape = }")
+    print(f"{true_conf.shape = }")
+    print(f"{true_cls.shape = }")
+    exit()
 
     batches, grid_size, _ = pred_x.shape
     C = pred_cls.shape[-1]
