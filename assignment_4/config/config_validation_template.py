@@ -20,6 +20,7 @@ modify this code, at the express notion that a disclaimer was put in.
     jobs:
         job0:
             model: _
+            start_from_checkpoint_path: _
             input_image_size: _
             train_val_test_split: _
             batch_size : _
@@ -71,6 +72,9 @@ CONFIG_TEMPLATE = {
                     'type': 'object',
                     'properties': {
                         'model': {
+                            'type': 'string', 
+                        },
+                        'start_from_checkpoint_path': {
                             'type': 'string', 
                         },
                         'input_image_size': {

@@ -66,8 +66,6 @@ def create_basic_logger(name, level: int=logging.DEBUG)-> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(level)
     logger.propagate = False  
-    ch = _make_stream_handler(level)
-    logger.addHandler(ch)
     return logger
 
 def _make_stream_handler(level: int) -> logging.StreamHandler:
