@@ -7,7 +7,6 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset, Subset
 from typing import Callable
 from tqdm import tqdm
-from mean_average_precision import calculate_map
 
 import handle_output
 
@@ -608,8 +607,7 @@ def compute_epoch_map(
     conf_threshold: float,
 ) -> dict[str, float]:
     """
-    Compute mAP over an entire dataloader in one pass by caching
-    all predictions and targets, then evaluating them together.
+    Compute mAP over an entire dataloader.
 
     :param model: The model to evaluate.
     :type model: nn.Module
@@ -623,33 +621,31 @@ def compute_epoch_map(
     :type iou_thresholds: list[float]
     :param conf_threshold: Confidence threshold for predictions.
     :type conf_threshold: float
-    :returns: Dict mapping e.g. "0.5" -> mAP value.
+    :returns: Dict mapping IoU threshold to mAP value.
     :rtype: dict[str, float]
     """
     model.eval()
-    all_preds: list[torch.Tensor] = []
-    all_targets: list[torch.Tensor] = []
+    all_preds = []
+    all_targets = []
 
     with torch.no_grad():
         for images, targets in dataloader:
             images = images.to(device)
             targets = targets.to(device)
 
-            raw_preds = model(images)
+            preds = model(images)
 
-            preds_cube = raw_preds.view(-1, grid_size, grid_size, 7)
-
-            all_preds.append(preds_cube.cpu())
+            all_preds.append(preds.view(-1, grid_size, grid_size, 7).cpu())
             all_targets.append(targets.cpu())
 
-    y_hat_full = torch.cat(all_preds, dim=0)
-    y_full = torch.cat(all_targets, dim=0)
+    y_hat_all = torch.cat(all_preds, dim=0)
+    y_all = torch.cat(all_targets, dim=0)
 
     mAPs = {}
     for threshold in iou_thresholds:
         mAPs[str(threshold)] = calculate_map(
-            y_hat=y_hat_full,
-            y=y_full,
+            y_hat=y_hat_all,
+            y=y_all,
             iou_threshold=threshold,
             conf_threshold=conf_threshold,
         ).item()
