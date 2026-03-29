@@ -212,6 +212,18 @@ def calculate_map(
     # Only calculate the mean over classes that had at least one ground truth
     # box in this batch.
     classes_with_gt = true_per_class > 0
+
+    # Calculate per-class F1 at the final recall point (last column)
+    final_precision = precision[:, -1]  # shape: (n_classes,)
+    final_recall    = recall[:, -1]     # shape: (n_classes,)
+
+    f1_per_class = (
+        2 * final_precision * final_recall
+        / (final_precision + final_recall).clamp(min=1e-6)
+    )
+
+    avg_f1 = f1_per_class[classes_with_gt].mean()
+    print(f"Average F1 score: {avg_f1:.4f}")
     return ap_per_class[classes_with_gt].mean()
 
 def print_confusion_matrix(
