@@ -10,7 +10,7 @@ from torchvision import transforms
 from sklearn.model_selection import train_test_split
 
 
-def main():
+def confidence_thresholds():
     logger = create_logger("confidence threshold")
 
     DATA_IMAGES_PATH = "assignment_4/data/images/"
@@ -113,7 +113,7 @@ def main():
             IOU_THRESHOLDS, 
             threshold
         )
-        # exit()
+        
         mAP_string = ", ".join(
             f"mAP@{iou}: {test_mAP[str(iou)]*100:<2f}%"
             for iou in IOU_THRESHOLDS
@@ -129,4 +129,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    confidence_thresholds()

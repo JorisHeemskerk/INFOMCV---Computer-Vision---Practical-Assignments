@@ -56,7 +56,10 @@ Multiple training jobs can be defined and run sequentially via a YAML config fil
 ├── yolov1_resnet.py             # YOLOv1ResNet model (ResNet-18 backbone)
 ├── yolov1_loss.py               # YOLOv1 loss function (5-component)
 ├── mean_average_precision.py    # Vectorised mAP computation
-├── early_stopper.py             # Early stopping based on validation loss
+├── early_stopper.py             # Early stopping based on validation 
+|
+├── process_video.py             # Convert video into annotated version
+├── confidence_thresholds.py     # Find the best confidence thresholds for a model
 │
 ├── create_logger.py             # Logger factory (colour-coded, UTC+1 timestamps)
 ├── custom_logger_formatter.py   # Custom logging formatter
