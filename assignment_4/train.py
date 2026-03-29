@@ -11,7 +11,7 @@ from tqdm import tqdm
 import handle_output
 
 from early_stopper import EarlyStopper
-from mean_average_precision import compute_map
+from mean_average_precision import calculate_map
 from visualise import visualise_batch
 
 
@@ -389,7 +389,7 @@ def train_epoch(
         
         for iou_threshold in train_mAPs.keys():
             train_mAPs[iou_threshold].append(
-                compute_map(
+                calculate_map(
                     y_hat, 
                     y, 
                     float(iou_threshold), 
@@ -479,7 +479,7 @@ def val_epoch(
             
             for iou_threshold in val_mAPs.keys():
                 val_mAPs[iou_threshold].append(
-                    compute_map(
+                    calculate_map(
                         y_hat, 
                         y, 
                         float(iou_threshold), 
@@ -586,7 +586,7 @@ def predict_epoch(
             
             for iou_threshold in test_mAPs.keys():
                 test_mAPs[iou_threshold].append(
-                    compute_map(
+                    calculate_map(
                         y_hat, 
                         y, 
                         float(iou_threshold), 
@@ -597,3 +597,57 @@ def predict_epoch(
     return \
         {key: value / len(dataloader) for key, value in test_losses.items()}, \
         {key: np.mean(value) for key, value in test_mAPs.items()}
+
+def compute_epoch_map(
+    model: nn.Module,
+    dataloader: DataLoader,
+    device: str,
+    grid_size: int,
+    iou_thresholds: list[float],
+    conf_threshold: float,
+) -> dict[str, float]:
+    """
+    Compute mAP over an entire dataloader.
+
+    :param model: The model to evaluate.
+    :type model: nn.Module
+    :param dataloader: Dataset to evaluate.
+    :type dataloader: DataLoader
+    :param device: Device to move data to.
+    :type device: str
+    :param grid_size: Size of the grid.
+    :type grid_size: int
+    :param iou_thresholds: List of IoU thresholds to evaluate at.
+    :type iou_thresholds: list[float]
+    :param conf_threshold: Confidence threshold for predictions.
+    :type conf_threshold: float
+    :returns: Dict mapping IoU threshold to mAP value.
+    :rtype: dict[str, float]
+    """
+    model.eval()
+    all_preds = []
+    all_targets = []
+
+    with torch.no_grad():
+        for images, targets in dataloader:
+            images = images.to(device)
+            targets = targets.to(device)
+
+            preds = model(images)
+
+            all_preds.append(preds.view(-1, grid_size, grid_size, 7).cpu())
+            all_targets.append(targets.cpu())
+
+    y_hat_all = torch.cat(all_preds, dim=0)
+    y_all = torch.cat(all_targets, dim=0)
+
+    mAPs = {}
+    for threshold in iou_thresholds:
+        mAPs[str(threshold)] = calculate_map(
+            y_hat=y_hat_all,
+            y=y_all,
+            iou_threshold=threshold,
+            conf_threshold=conf_threshold,
+        ).item()
+
+    return mAPs

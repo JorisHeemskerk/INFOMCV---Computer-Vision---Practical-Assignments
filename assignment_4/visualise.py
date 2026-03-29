@@ -43,6 +43,9 @@ def draw_boxes(
     ],
     confidence_threshold: float,
     class_names: list[str],
+    line_thickness: int=2,
+    font_scale: float=.5,
+    text_thickness: int=1
 )-> cv2.typing.MatLike:
     """
     Display bounding boxes on top of image.
@@ -63,6 +66,13 @@ def draw_boxes(
     :type confidence_threshold: float
     :param class_names: Names of the classes.
     :type class_names: list[str]
+    :param line_thickness: The thickness of the box lines.
+    :type line_thickness: int
+    :param font_scale: Font scale factor that is multiplied by the
+        font-specific base size.
+    :type font_scale: float
+    :param text_thickness: Thickness of lines used to render the text.
+    :type text_thickness: int
     :return: Image with bounding boxes drawn onto it.
     :rtype: cv2.typing.MatLike
     """
@@ -108,14 +118,14 @@ def draw_boxes(
             (x1[i].item(), y1[i].item()), 
             (x2[i].item(), y2[i].item()), 
             color, 
-            2
+            line_thickness
         )
         ################### Label background & text. ###################
         (label_w, label_h), baseline = cv2.getTextSize(
             label, 
             cv2.FONT_HERSHEY_SIMPLEX, 
-            0.5, 
-            1
+            font_scale, 
+            text_thickness
         )
         label_x = x1[i].item()
         label_y = y1[i].item() - 5
@@ -148,9 +158,9 @@ def draw_boxes(
             label,
             (label_x, label_y),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.5,
+            font_scale,
             (1.0, 1.0, 1.0),
-            1
+            text_thickness
         )
 
     return image

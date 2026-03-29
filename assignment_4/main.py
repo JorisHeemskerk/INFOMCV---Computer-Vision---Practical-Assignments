@@ -20,7 +20,7 @@ from create_logger import create_logger
 from config.config_validation_template import CONFIG_TEMPLATE
 from data import to_dataloaders
 from early_stopper import EarlyStopper
-from train import train, predict_epoch, train_cross_validation
+from train import train, predict_epoch, train_cross_validation, compute_epoch_map
 from visualise import visualise_batch, visualise_training
 from yolov1_base import YOLOv1Base
 from yolov1_resnet import YOLOv1ResNet
@@ -271,6 +271,34 @@ def _process_job(
         f"achieved during epoch {val_best_epoch}."
     )
 
+    ########### Get results on training and validation sets. ###########
+    train_epoch_map = compute_epoch_map(
+        model,
+        train_dataloader,
+        DEVICE,
+        CONFIG["general"]["grid_size"],
+        job["iou_thresholds"], 
+        job["conf_threshold"]
+    )
+    mAP_val_epoch_string = ", ".join(
+        f"mAP@{threshold}: {train_epoch_map[str(threshold)]*100:<2f}%"
+        for threshold in job["iou_thresholds"]
+    )
+    logger.critical(f"Training set over all images: {mAP_val_epoch_string}")
+    val_epoch_map = compute_epoch_map(
+        model,
+        val_dataloader,
+        DEVICE,
+        CONFIG["general"]["grid_size"],
+        job["iou_thresholds"], 
+        job["conf_threshold"]
+    )
+    mAP_val_epoch_string = ", ".join(
+        f"mAP@{threshold}: {val_epoch_map[str(threshold)]*100:<2f}%"
+        for threshold in job["iou_thresholds"]
+    )
+    logger.critical(f"Validation set over all images: {mAP_val_epoch_string}")
+    
     ############### Produce all the loss and mAP figures. ##############
     visualise_training(
         train_losses, 
@@ -301,26 +329,19 @@ def _process_job(
     #                          Apply test set.                         #
     ####################################################################
     
-    # TODO: comment in once final hyperparameters are selected
-
-    # test_loss, test_mAP = predict_epoch(
-    #     dataloader=test_dataloader,
-    #     model=model,
-    #     loss_fn=LOSS_FN,
-    #     device=DEVICE,
-    #     grid_size=CONFIG["general"]["grid_size"],
-    #     iou_thresholds=job["iou_thresholds"],
-    #     conf_threshold=job["conf_threshold"],
-    #     logger=logger
-    # )
-    # print(
-    #     f"\033[32mTest mAP: {test_mAP}, "
-    #     f"Test error | avg loss: {test_loss["total"]:>7f} | xy "
-    #     f"loss: {test_loss["xy"]:>2f}, wh loss: {test_loss["wh"]:>2f}"
-    #     f", conf loss: {test_loss["conf_obj"]:>2f}, noobj conf loss:"
-    #     f" {test_loss["conf_noobj"]:>2f}, class loss: "
-    #     f"{test_loss["cls"]:>2f} |"
-    # )
+    test_mAP = compute_epoch_map(
+        model,
+        test_dataloader,
+        DEVICE,
+        CONFIG["general"]["grid_size"],
+        job["iou_thresholds"], 
+        job["conf_threshold"]
+    )
+    mAP_test_epoch_string = ", ".join(
+        f"mAP@{threshold}: {test_mAP[str(threshold)]*100:<2f}%"
+        for threshold in job["iou_thresholds"]
+    )
+    logger.critical(f"Test set over all images: {mAP_test_epoch_string}")
 
 
 
