@@ -10,7 +10,7 @@ from torchvision import transforms
 from sklearn.model_selection import train_test_split
 
 
-def confidence_thresholds():
+def main():
     logger = create_logger("confidence threshold")
 
     DATA_IMAGES_PATH = "assignment_4/data/images/"
@@ -27,7 +27,10 @@ def confidence_thresholds():
     CONF_STOP = 1
     CONF_STEP  = 0.05
 
-    CONF_THRESHOLDS = [threshold for threshold in np.arange(CONF_START, CONF_STOP + CONF_STEP / 2, CONF_STEP)]
+    CONF_THRESHOLDS = [
+        threshold for threshold in \
+            np.arange(CONF_START, CONF_STOP + CONF_STEP / 2, CONF_STEP)
+    ]
 
     logger.info(f"using thresholds: {CONF_THRESHOLDS}")
 
@@ -49,10 +52,7 @@ def confidence_thresholds():
         grid_size=GRID_SIZE,
         logger=logger,
         transform=transforms.Compose([
-            transforms.Resize((
-                IMG_SIZE,
-                IMG_SIZE
-            )),
+            transforms.Resize((IMG_SIZE, IMG_SIZE)),
             transforms.ToTensor(),
             # These numbers are from ImageNet, for normalisation.
             transforms.Normalize(
@@ -68,15 +68,14 @@ def confidence_thresholds():
     indices = list(range(len(dataset)))
     
     # Split in a stratisfied manner.
-    train_idx, val_test_idx, _, val_test_labels = train_test_split(
+    _, val_test_idx, _, val_test_labels = train_test_split(
         indices, 
         labels,
-        test_size= \
-            TRAIN_VAL_TEST_SPLIT[1] + TRAIN_VAL_TEST_SPLIT[2],
+        test_size=TRAIN_VAL_TEST_SPLIT[1] + TRAIN_VAL_TEST_SPLIT[2],
         stratify=labels,
         random_state=42
     )
-    val_idx, test_idx = train_test_split(
+    _, test_idx = train_test_split(
         val_test_idx,
         test_size=TRAIN_VAL_TEST_SPLIT[2] / (
             TRAIN_VAL_TEST_SPLIT[1] + TRAIN_VAL_TEST_SPLIT[2]
@@ -84,18 +83,14 @@ def confidence_thresholds():
         stratify=val_test_labels,
         random_state=42
     )
-    train_dataset = torch.utils.data.Subset(dataset, train_idx)
-    val_dataset = torch.utils.data.Subset(dataset, val_idx)
     test_dataset = torch.utils.data.Subset(dataset, test_idx)
-    logger.debug(
-        f"{len(train_dataset)= }, {len(val_dataset)= }, {len(test_dataset)= }"
-    )
+    logger.debug(f"{len(test_dataset) = }")
 
     # Convert DataSet objects to DataLoader objects.
-    _, _, test_dataloader = to_dataloaders(
-        [train_dataset, val_dataset, test_dataset], 
-        batch_sizes=[BATCH_SIZE] * 3, 
-        shuffles=[True, True, False],
+    test_dataloader = to_dataloaders(
+        [test_dataset], 
+        batch_sizes=[BATCH_SIZE], 
+        shuffles=[False],
         logger=logger,
         num_workers=NUM_WORKERS,
         pin_memory=True,
@@ -124,9 +119,10 @@ def confidence_thresholds():
 
     best_conf = max(all_mAPs, key=all_mAPs.__getitem__)
     logger.critical(
-        f"best conf_threshold: {best_conf} : mAP@{IOU_THRESHOLDS[0]} = {all_mAPs[best_conf]:<2f}"
+        f"best conf_threshold: {best_conf} : "
+        f"mAP@{IOU_THRESHOLDS[0]} = {all_mAPs[best_conf]:<2f}"
     )
 
 
 if __name__ == "__main__":
-    confidence_thresholds()
+    main()
