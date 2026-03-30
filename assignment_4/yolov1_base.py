@@ -90,7 +90,7 @@ class YOLOv1Base(nn.Module):
         torch.save(self, filename)
 
     @classmethod
-    def load(cls, source: str, logger: logging.Logger):
+    def load(cls, source: str, logger: logging.Logger)-> YOLOv1Base:
         """
         Load a model from a file.
 

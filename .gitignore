@@ -226,5 +226,6 @@ output/*/
 *.yml
 !*/data/.gitkeep
 !assignment_4/pretrain_classification.ipynb
+!assignment_4/models/base_model.pth
 
 .vscode/
