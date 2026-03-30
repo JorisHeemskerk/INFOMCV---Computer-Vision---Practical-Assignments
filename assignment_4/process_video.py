@@ -68,7 +68,6 @@ def process_batch(
             )
         )
 
-
 def process_video(
     model_path: str,
     video_path: str,
@@ -102,7 +101,6 @@ def process_video(
     # Initialise Device.
     device = torch.accelerator.current_accelerator().type if \
         torch.accelerator.is_available() else "cpu"
-    
     logger.info(f"Using {device} device")
 
     # Load the model.
@@ -199,9 +197,7 @@ def process_video(
         output_path.replace(".mp4", "_audio.mp4")
     ).run()
 
-    logger.info(
-        f"Done making the video."
-    )
+    logger.info(f"Done making the video.")
 
 
 if __name__ == "__main__":

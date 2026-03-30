@@ -1,4 +1,5 @@
 import torch
+
 from decode import decode_predictions
 
 
@@ -44,7 +45,7 @@ def pairwise_iou(boxes_a: torch.Tensor, boxes_b: torch.Tensor) -> torch.Tensor:
     inter_area = inter_w * inter_h
     union_area = (w_a * h_a)[:, None] + (w_b * h_b)[None] - inter_area
 
-    # clamp union to prevent zero division
+    # Clamp union to prevent zero division.
     return inter_area / union_area.clamp(min=1e-6)
 
 def calculate_map(
@@ -176,8 +177,8 @@ def calculate_map(
 
     # Make sure each ground truth is only matched once by taking the cumulative
     # sum and ensuring those that are duplicates aren't kept.
-    cum_matches  = match_matrix.cumsum(dim=1)
-    valid_match  = (cum_matches <= 1.0) & (match_matrix == 1.0)
+    cum_matches = match_matrix.cumsum(dim=1)
+    valid_match = (cum_matches <= 1.0) & (match_matrix == 1.0)
 
     # Decide per class true positives. True positives are when it had a valid
     # match with it's ground truth. 
@@ -197,7 +198,7 @@ def calculate_map(
 
     # Ensure each precision-recall curve starts at recall = 0 and
     # precision = 1.
-    ones  = torch.ones(n_classes, 1, device=device)
+    ones = torch.ones(n_classes, 1, device=device)
     zeros = torch.zeros(n_classes, 1, device=device)
     precision = torch.cat([ones,  precision], dim=-1)
     recall = torch.cat([zeros, recall], dim=-1)
@@ -231,17 +232,13 @@ def print_confusion_matrix(
     :param valid_match: Matrix containing the valid matches.
     :type valid_match: torch.Tensor
     """
-    # Get predicted class (highest class score) for the predictions.
     pred_class = cls_scores.argmax(dim=-1)
-
-    # Get ground truths.  
     true_class = true_cls.argmax(dim=-1)
 
     # For each GT, find which predictions were matched to it.
     pred_per_gt = valid_match.any(dim=0).T
 
     for actual_cls_idx, cls_name in enumerate(["cat", "dog"]):
-        # Find all ground truths belonging to this class.
         gt_indices = (true_class == actual_cls_idx).nonzero(as_tuple=True)[0]
 
         counts = {"cat": 0, "dog": 0, "None": 0}
@@ -250,7 +247,6 @@ def print_confusion_matrix(
             if len(matched_preds) == 0:
                 counts["None"] += 1
             else:
-                # Take the first matched prediction's class
                 pred_cls = pred_class[matched_preds[0]].item()
                 counts[["cat", "dog"][pred_cls]] += 1
 
@@ -268,6 +264,4 @@ def print_confusion_matrix(
         unmatched = [
             pred for pred in pred_indices if not pred_per_gt[:, pred].any()
         ]
-        print(
-            f"predicted {cls_name}: actual None: {len(unmatched)} times"
-        )
+        print(f"predicted {cls_name}: actual None: {len(unmatched)} times")
