@@ -25,7 +25,7 @@ def main():
 
     CONF_START = 0
     CONF_STOP = 1
-    CONF_STEP  = 0.05
+    CONF_STEP  = 0.1
 
     CONF_THRESHOLDS = [
         threshold for threshold in \
