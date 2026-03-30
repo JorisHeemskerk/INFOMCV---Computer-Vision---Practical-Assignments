@@ -207,8 +207,25 @@ def calculate_map(
     precision_env = precision.flip(-1).cummax(dim=-1).values.flip(-1)
     ap_per_class = torch.trapezoid(precision_env, recall, dim=-1)
 
-    # Print the info for confusion matrix (comment this line if not in use)
+    ####################################################################
+    #                   Confidence threshold prints                    #
+    # Comment this part in when determining the confidence thresholds. #
+    ####################################################################
+
+    total_precision = precision[:, -1]
+    total_recall = recall[:, -1]
+
+    f1_per_class = (
+        2 * total_precision * total_recall
+        / (total_precision + total_recall)
+    )
+    print(f"Average F1-score@{conf_threshold}: {f1_per_class.mean()}")
+
     # print_confusion_matrix(cls_scores, true_cls, valid_match)
+
+    ####################################################################
+    #                End of confidence threshold prints                #
+    ####################################################################
 
     # Only calculate the mean over classes that had at least one ground truth
     # box in this batch.
