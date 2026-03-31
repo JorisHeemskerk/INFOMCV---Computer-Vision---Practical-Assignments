@@ -212,14 +212,14 @@ def calculate_map(
     # Comment this part in when determining the confidence thresholds. #
     ####################################################################
 
-    total_precision = precision[:, -1]
-    total_recall = recall[:, -1]
+    # total_precision = precision[:, -1]
+    # total_recall = recall[:, -1]
 
-    f1_per_class = (
-        2 * total_precision * total_recall
-        / (total_precision + total_recall)
-    )
-    print(f"Average F1-score@{conf_threshold}: {f1_per_class.mean()}")
+    # f1_per_class = (
+    #     2 * total_precision * total_recall
+    #     / (total_precision + total_recall)
+    # )
+    # print(f"Average F1-score@{conf_threshold}: {f1_per_class.mean()}")
 
     # print_confusion_matrix(cls_scores, true_cls, valid_match)
 
