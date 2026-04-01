@@ -563,14 +563,14 @@ def predict_epoch(
             X, y = X.to(device), y.to(device)
             y_hat = model(X)
             y_hat = y_hat.view(-1, grid_size, grid_size, 7)
-            if i == 0 and visualise_first_batch == True:
+            if i % 10 == 0 and visualise_first_batch == True:
                 visualise_batch(
                     X, 
                     y, 
                     y_hat, 
                     plotting_conf_threshold,
                     dataloader.dataset.dataset.classes, 
-                    f"{handle_output.OUTPUT_DIR}predict_batch_1.png"
+                    f"{handle_output.OUTPUT_DIR}predict_batch_{i}.png"
                 )
 
             loss, (

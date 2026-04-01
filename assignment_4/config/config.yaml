@@ -15,16 +15,16 @@ general:
     num_data_workers: 4 # Number of workers preparing batches.
 jobs:
     job0:
-        model: "resnet"
+        model: "yolo"
         start_from_checkpoint_path: None #"assignment_4/models/classification_backbone.pth"
-        input_image_size: 224
+        input_image_size: 112
         train_val_test_split : [.72, .18, .1]
         batch_size : 8
-        n_epochs: 75
+        n_epochs: 50
         k_folds: 1
-        learning_rate:  .00001 # 1e-4
+        learning_rate:  .0001 # 1e-4
         lambda_coord: 5
         lambda_noobj: .5
-        iou_thresholds: [.5, .9]
-        conf_threshold: .01
+        iou_thresholds: [.5]
+        conf_threshold: .0
         plotting_conf_threshold: .5

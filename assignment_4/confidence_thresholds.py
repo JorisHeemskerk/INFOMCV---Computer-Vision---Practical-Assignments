@@ -25,7 +25,7 @@ def main():
 
     CONF_START = 0
     CONF_STOP = 1
-    CONF_STEP  = 0.05
+    CONF_STEP  = 0.1
 
     CONF_THRESHOLDS = [
         threshold for threshold in \
@@ -98,7 +98,6 @@ def main():
     )
 
     # Find mAP per threshold
-    all_mAPs = {}
     for threshold in CONF_THRESHOLDS:
         test_mAP = compute_epoch_map(
             model,
@@ -115,13 +114,6 @@ def main():
         )
         logger.info(f"{round(threshold, 4)} : {mAP_string}")
 
-        all_mAPs[f"{round(threshold, 4)}"] = test_mAP[str(IOU_THRESHOLDS[0])]
-
-    best_conf = max(all_mAPs, key=all_mAPs.__getitem__)
-    logger.critical(
-        f"best conf_threshold: {best_conf} : "
-        f"mAP@{IOU_THRESHOLDS[0]} = {all_mAPs[best_conf]:<2f}"
-    )
 
 
 if __name__ == "__main__":
